@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:21 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/26 21:44:05 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/27 18:50:57 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,7 +24,7 @@ class Tintin_reporter
 {
 	public:
 		//Constructors
-		Tintin_reporter(void);
+		Tintin_reporter(void) noexcept;
 		Tintin_reporter(std::string const & filepath);
 		Tintin_reporter(std::string&& filepath);
 		Tintin_reporter(Tintin_reporter const & src);
@@ -35,6 +35,7 @@ class Tintin_reporter
 
 		//Operator overload
 		Tintin_reporter&	operator=(Tintin_reporter const & rhs);
+		Tintin_reporter&	operator=(Tintin_reporter && rhs);
 
 		//Member functions
 		void				log(std::string && str, enum Loglevel level);
