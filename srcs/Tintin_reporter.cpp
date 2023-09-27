@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:59:28 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/27 18:52:06 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/27 20:29:39 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,6 +97,16 @@ Tintin_reporter& Tintin_reporter::operator=(Tintin_reporter && rhs)
 	return (*this);
 }
 
+
+void	Tintin_reporter::client_log(std::string && str)
+{
+	this->log("User input: " + str, LOG);
+}
+void	Tintin_reporter::client_log(std::string const & str)
+{
+	this->log("User input: " + str, LOG);
+}
+
 void	Tintin_reporter::log(std::string && str, enum Loglevel level)
 {
 	std::string	log;
@@ -116,7 +126,7 @@ void	Tintin_reporter::log(std::string && str, enum Loglevel level)
 			log += " [ LOG ] - Matt_daemon: " + str;
 			break ;
 	}
-	this->_logfile << log;
+	this->_logfile << log << std::endl;
 }
 
 void	Tintin_reporter::log(std::string const & str, enum Loglevel level)
@@ -138,7 +148,7 @@ void	Tintin_reporter::log(std::string const & str, enum Loglevel level)
 			log += " [ LOG ] - Matt_daemon: " + str;
 			break ;
 	}
-	this->_logfile << log;
+	this->_logfile << log << std::endl;
 }
 
 std::string	Tintin_reporter::get_time(void) const
