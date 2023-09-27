@@ -6,9 +6,11 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/09/27 17:55:22 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/27 18:07:58 by tnaton           ###   ########.fr        #
+#    Updated: 2023/09/27 18:09:47 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
+
+-include $(OBJS:%.o=%.d)
 
 vpath %.hpp inc
 
@@ -42,7 +44,7 @@ MOREFLAGS = -Wformat=2				\
 #	-ftrapv							Trap signed overflow for + - *
 #	-Wdate-time						Warn if __TIME__ __DATE or __TIMESTAMP__ are encoutered to prevent bit-wise-identical compilation
 
-CXXFLAGS = -Wall -Wextra -Werror -Wpedantic -std=c++20 -O3 -g $(MOREFLAGS)
+CXXFLAGS = -MMD -Wall -Wextra -Werror -Wpedantic -std=c++20 -O3 -g $(MOREFLAGS)
 
 CXX = g++
 
