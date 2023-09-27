@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/09/27 17:55:22 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/27 18:09:47 by tnaton           ###   ########.fr        #
+#    Updated: 2023/09/27 18:23:40 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,7 +14,7 @@
 
 vpath %.hpp inc
 
-NAME = matt-daemon
+NAME = Matt_daemon
 
 OBJDIR := obj
 
@@ -61,7 +61,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -I inc -o $@ -c $<
 
 $(OBJDIR):
-	mkdir -p $@
+	test -d $@ || mkdir -p $@
 
 .SECONDARY: $(OBJS)
 
