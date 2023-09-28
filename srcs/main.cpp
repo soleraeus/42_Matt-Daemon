@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/27 21:33:10 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/28 21:27:40 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,41 @@
 #include "Matt_daemon.hpp"
 #include "Tintin_reporter.hpp"
 #include "Server.hpp"
+
+volatile sig_atomic_t g_sig = 0;
+
+void	handler(int sig)
+{
+	g_sig = sig;
+}
+
+
+bool	install_signal_handler(void)
+{
+	sigset_t			set;
+	struct sigaction	act;
+
+	bzero(&act, sizeof(act));
+	if (sigemptyset(&set))
+		return (false);
+	if (sigaddset(&set, SIGTERM) || sigaddset(&set, SIGHUP)
+		|| sigaddset(&set, SIGINT) || sigaddset(&set, SIGQUIT)
+		|| sigaddset(&set, SIGUSR1) || sigaddset(&set, SIGUSR2)
+		|| sigaddset(&set, SIGTSTP))
+	{
+		return (false);
+	}
+	act.sa_handler = handler;
+	act.sa_mask = set;
+	if (sigaction(SIGTERM, &act, NULL) || sigaction(SIGHUP, &act, NULL)
+		|| sigaction(SIGINT, &act, NULL) || sigaction(SIGQUIT, &act, NULL)
+		|| sigaction(SIGUSR1, &act, NULL) || sigaction(SIGUSR2, &act, NULL)
+		|| sigaction(SIGTSTP, &act, NULL))
+	{
+		return (false);
+	}
+	return (true);
+}
 
 void	exit_procedure(Tintin_reporter & reporter, int & lock)
 {
@@ -55,6 +90,13 @@ int	main(void)
 		exit_procedure(reporter, lock);
 		return (1);
 	}
+	if (!install_signal_handler())
+	{
+		std::cerr << "Could not install signal handlers" << std::endl;
+		reporter.log("Could not install signal handlers", ERROR);
+		exit_procedure(reporter, lock);
+		return (1);
+	}
 	reporter.log("Creating server.", INFO);
 	server = Server(reporter);
 	if (!server.create_server())
@@ -68,6 +110,7 @@ int	main(void)
 	{
 		reporter.log("Server created.", INFO);
 	}
+	server.serve();
 	exit_procedure(reporter, lock);
 	return (0);
 }

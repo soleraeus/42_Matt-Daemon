@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:42:18 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/27 21:37:06 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/09/28 21:30:30 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,8 +15,8 @@
 Server::Server(void): _sockfd(0), _epollfd(0), _reporter(NULL) {}
 Server::Server(Tintin_reporter & reporter): _sockfd(0), _epollfd(0), _reporter(&reporter) {}
 
-Server::Server(Server const & src): _sockfd(src._sockfd), _epollfd(src._epollfd), _reporter(src._reporter){}
-Server::Server(Server && src): _sockfd(std::move(_sockfd)), _epollfd(std::move(src._epollfd)), _reporter(std::move(src._reporter)){
+Server::Server(Server const & src): _sockfd(src._sockfd), _epollfd(src._epollfd), _reporter(src._reporter), _clients(src._clients){}
+Server::Server(Server && src): _sockfd(std::move(_sockfd)), _epollfd(std::move(src._epollfd)), _reporter(std::move(src._reporter)), _clients(std::move(src._clients)){
 	src._sockfd = 0;
 	src._epollfd = 0;
 	src._reporter = NULL;
@@ -42,6 +42,7 @@ Server & Server::operator=(Server const & rhs)
 	this->_sockfd = rhs._sockfd;
 	this->_epollfd = rhs._epollfd;
 	this->_reporter = rhs._reporter;
+	this->_clients = rhs._clients;
 	return (*this);
 }
 
@@ -54,6 +55,7 @@ Server & Server::operator=(Server && rhs)
 	this->_sockfd = std::move(rhs._sockfd);
 	this->_epollfd = std::move(rhs._epollfd);
 	this->_reporter = std::move(rhs._reporter);
+	this->_clients = std::move(rhs._clients);
 	rhs._sockfd = 0;
 	rhs._epollfd = 0;
 	rhs._reporter = NULL;
@@ -74,7 +76,7 @@ bool	Server::create_server(void)
 	memset(&address, 0, sizeof(address));
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
-	address.sin_port = htons(4242);
+	address.sin_port = htons(MATT_DAEMON_BASIC_PORT);
 	if (setsockopt(this->_sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(int)))
 	{
 		std::cerr << "Could not set option on socket" << std::endl;
@@ -96,4 +98,75 @@ bool	Server::create_server(void)
 	return (true);
 }
 
+bool	Server::epoll_add(int fd, uint32_t events)
+{
+	memset(&this->_init, 0, sizeof(struct epoll_event));
+	this->_init.data.fd = fd;
+	this->_init.events = events;
+	return (epoll_ctl(this->_epollfd, EPOLL_CTL_ADD, fd, &this->_init) != -1);
+}
 
+bool	Server::epoll_del(int fd)
+{
+	memset(&this->_init, 0, sizeof(struct epoll_event));
+	this->_init.data.fd = fd;
+	return (epoll_ctl(this->_epollfd, EPOLL_CTL_DEL, fd, &this->_init) != -1);
+}
+
+void	Server::serve(void)
+{
+	int	new_connection = 0;
+	int	nb_events = 0;
+	std::map<int, Client>::iterator	it;
+
+	if (this->_epollfd <= 0 || this->_sockfd <= 0)
+		throw std::logic_error("Member function create_server needs to be called before serving");
+	memset(this->_events, 0, sizeof(struct epoll_event) * 5);
+	if (!this->epoll_add(this->_sockfd, EPOLLIN))
+	{
+		this->_reporter->log("Could not initialize epoll on socket", ERROR);
+	}
+	while (true)
+	{
+		nb_events = epoll_wait(this->_epollfd, this->_events, 5, 1000 * 60 * 15);
+		if (g_sig > 0)
+		{
+			this->_reporter->log("Signal handler.", INFO);
+			return ;
+		}
+		if (nb_events > 0)
+		{
+			for (int i = 0; i < nb_events; ++i)
+			{
+				if ((it = this->_clients.find(this->_events[i].data.fd)) != this->_clients.end())
+				{
+					if (!it->second.receive(this->_reporter))
+					{
+						this->epoll_del(this->_events[i].data.fd);
+						this->_clients.erase(it);
+					}
+					if (g_sig == -1)
+					{
+						this->_reporter->log("Request quit.", INFO);
+						return ;
+					}
+				}
+				else if (this->_events[i].data.fd == this->_sockfd)
+				{
+					new_connection = accept(this->_sockfd, NULL, NULL);
+					if (new_connection <= 0)
+					{
+						this->_reporter->log("Could not accept new client", ERROR);
+					}
+					if (this->_clients.size() == 3)
+					{
+						close(new_connection);
+						continue ;
+					}
+					this->_clients[new_connection] = Client(new_connection);
+					this->epoll_add(new_connection, EPOLLIN);
+				}
+			}
+		}
+	}
+}

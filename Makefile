@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/09/27 17:55:22 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/27 21:07:29 by bdetune          ###   ########.fr        #
+#    Updated: 2023/09/28 20:44:47 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -22,11 +22,13 @@ SRCDIR := srcs
 
 SRCS = main.cpp \
 	   Tintin_reporter.cpp \
-	   Server.cpp
+	   Server.cpp \
+	   Client.cpp
 
 INC = Matt_daemon.hpp \
 	  Tintin_reporter.hpp \
-	  Server.hpp
+	  Server.hpp \
+	  Client.hpp
 
 MOREFLAGS = -Wformat=2				\
 			-Wformat-overflow=2		\
