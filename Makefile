@@ -89,7 +89,7 @@ clean-docker:
 
 
 .PHONY: re-docker
-re-docker: cleandocker docker
+re-docker: clean-docker docker
 
 .PHONY: clean
 clean:
