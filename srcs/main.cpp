@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/28 21:27:40 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/02 21:23:54 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,59 +56,71 @@ bool	install_signal_handler(void)
 	return (true);
 }
 
-void	exit_procedure(Tintin_reporter & reporter, int & lock)
+void	exit_procedure(Tintin_reporter * reporter, int & lock)
 {
-	reporter.log("Quitting.", INFO);
+	reporter->log("Quitting.", INFO);
 	if (lock > 0)
 		close(lock);
 }
 
 int	main(void)
 {
-	/*if (getuid() != 0)
+	int					lock;
+	Tintin_reporter*	reporter = nullptr;
+	Server				server;
+
+	if (getuid() != 0)
 	{
 		std::cerr << "Matt_daemon requires to be started as root" << std::endl;
 		return (1);
-	}*/
-	int				lock;
-	Tintin_reporter	reporter("log");
-	Server			server;
-
-	reporter.log("Started.", INFO);
+	}
+	try
+	{
+		reporter = new Tintin_reporter("/var/log/matt_daemon/matt_daemon.log");
+	}
+	catch (std::exception const & e)
+	{
+		std::cerr << "Could not create reporter: " << e.what() << std::endl;
+		return (1);
+	}
+	reporter->log("Started.", INFO);
 	lock = open("/var/lock/matt_daemon.lock", O_CREAT | O_RDWR | O_CLOEXEC, 0600);
 	if (lock <= 0)
 	{
 		std::cerr << "Could not open lockfile /var/lock/matt_daemon.lock" << std::endl;
-		reporter.log("Error, could no open lockfile /var/lock/matt_daemon.lock.", ERROR);
+		reporter->log("Error, could no open lockfile /var/lock/matt_daemon.lock.", ERROR);
 		exit_procedure(reporter, lock);
+		delete reporter;
 		return (1);
 	}
 	if (flock(lock, LOCK_EX | LOCK_NB) == -1)
 	{
 		std::cerr << "Could not lock /var/lock/matt_daemon.lock" << std::endl;
-		reporter.log("Error, could not lock /var/lock/matt_daemon.lock.", ERROR);
+		reporter->log("Error, could not lock /var/lock/matt_daemon.lock.", ERROR);
 		exit_procedure(reporter, lock);
+		delete reporter;
 		return (1);
 	}
 	if (!install_signal_handler())
 	{
 		std::cerr << "Could not install signal handlers" << std::endl;
-		reporter.log("Could not install signal handlers", ERROR);
+		reporter->log("Could not install signal handlers", ERROR);
 		exit_procedure(reporter, lock);
+		delete reporter;
 		return (1);
 	}
-	reporter.log("Creating server.", INFO);
+	reporter->log("Creating server.", INFO);
 	server = Server(reporter);
 	if (!server.create_server())
 	{
 		std::cerr << "Could not create server" << std::endl;
-		reporter.log("Could not create server", ERROR);
+		reporter->log("Could not create server", ERROR);
 		exit_procedure(reporter, lock);
 		return (1);
 	}
 	else
 	{
-		reporter.log("Server created.", INFO);
+		reporter->log("Server created.", INFO);
 	}
 	server.serve();
 	exit_procedure(reporter, lock);

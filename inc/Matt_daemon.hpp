@@ -6,14 +6,15 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 21:04:44 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/28 21:19:50 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/02 21:25:49 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef MATT_DAEMON_HPP
 # define MATT_DAEMON_HPP
-# define MATT_DAEMON_BASIC_PORT 8080
+# define MATT_DAEMON_BASIC_PORT 4242
 # include <signal.h>
+# include <exception>
 
 extern volatile sig_atomic_t	g_sig;
 

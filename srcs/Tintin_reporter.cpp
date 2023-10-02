@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:59:28 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/27 20:29:39 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/02 20:33:28 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,6 +78,8 @@ Tintin_reporter& Tintin_reporter::operator=(Tintin_reporter const & rhs)
 
 Tintin_reporter& Tintin_reporter::operator=(Tintin_reporter && rhs)
 {
+	if (this == &rhs)
+		return (*this);
 	if (this->_logfile.is_open())
 		this->_logfile.close();
 	this->_filepath = std::move(rhs._filepath);

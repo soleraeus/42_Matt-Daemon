@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:33:42 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/28 20:57:52 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/02 21:18:38 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,7 +29,7 @@ class Server
 	public:
 		//Constructors
 		Server(void);
-		Server(Tintin_reporter & reporter);
+		Server(Tintin_reporter * reporter) noexcept;
 		Server(Server const & src);
 		Server(Server && src);
 

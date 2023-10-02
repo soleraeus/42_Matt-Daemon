@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/09/27 17:55:22 by tnaton            #+#    #+#              #
-#    Updated: 2023/09/28 20:44:47 by bdetune          ###   ########.fr        #
+#    Updated: 2023/10/02 21:30:30 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -15,6 +15,9 @@
 vpath %.hpp inc
 
 NAME = Matt_daemon
+
+INTERFACE = 0.0.0.0
+PORT = 8080
 
 OBJDIR := obj
 
@@ -55,6 +58,7 @@ CXX = g++
 OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME): $(OBJS) $(INC)
+	mkdir -p /var/log/matt_daemon
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $@
 
 $(OBJS): $(INC)
@@ -71,6 +75,21 @@ $(OBJDIR):
 
 .PHONY: all
 all : $(NAME)
+
+.PHONY: docker
+docker:
+	docker build -t matt_daemon .
+	docker run -p ${INTERFACE}:${PORT}:4242 -d --name matt_daemon matt_daemon:latest
+
+.PHONY: cleandocker
+cleandocker:
+	docker stop matt_daemon || true
+	docker rm matt_daemon || true
+	docker rmi matt_daemon:latest || true
+
+
+.PHONY: redocker
+redocker: cleandocker docker
 
 .PHONY: clean
 clean:

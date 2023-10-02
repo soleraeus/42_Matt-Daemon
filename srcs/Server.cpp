@@ -6,24 +6,33 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:42:18 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/28 21:30:30 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/02 21:19:39 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server.hpp"
 
-Server::Server(void): _sockfd(0), _epollfd(0), _reporter(NULL) {}
-Server::Server(Tintin_reporter & reporter): _sockfd(0), _epollfd(0), _reporter(&reporter) {}
+Server::Server(void): _sockfd(0), _epollfd(0), _reporter(nullptr) {}
+Server::Server(Tintin_reporter * reporter) noexcept: _sockfd(0), _epollfd(0), _reporter(reporter) {}
 
-Server::Server(Server const & src): _sockfd(src._sockfd), _epollfd(src._epollfd), _reporter(src._reporter), _clients(src._clients){}
+Server::Server(Server const & src): _sockfd(0), _epollfd(0), _reporter(nullptr), _clients(src._clients){
+	if (src._sockfd)
+		this->_sockfd = dup(src._sockfd);
+	if (src._epollfd)
+		this->_epollfd = dup(src._epollfd);
+	if (src._reporter)
+		this->_reporter = new Tintin_reporter(*(src._reporter));
+}
 Server::Server(Server && src): _sockfd(std::move(_sockfd)), _epollfd(std::move(src._epollfd)), _reporter(std::move(src._reporter)), _clients(std::move(src._clients)){
 	src._sockfd = 0;
 	src._epollfd = 0;
-	src._reporter = NULL;
+	src._reporter = nullptr;
 }
 
 Server::~Server(void)
 {
+	if (this->_reporter)
+		delete this->_reporter;
 	if (this->_epollfd > 0)
 		close(this->_epollfd);
 	if (this->_sockfd > 0)
@@ -39,9 +48,9 @@ Server & Server::operator=(Server const & rhs)
 		close(this->_epollfd);
 	if (this->_sockfd)
 		close(this->_sockfd);
-	this->_sockfd = rhs._sockfd;
-	this->_epollfd = rhs._epollfd;
-	this->_reporter = rhs._reporter;
+	this->_sockfd = rhs._sockfd ? dup(rhs._sockfd) : 0;
+	this->_epollfd = rhs._epollfd ? dup(rhs._epollfd) : 0;
+	this->_reporter = rhs._reporter ? new Tintin_reporter(*(rhs._reporter)) : nullptr;
 	this->_clients = rhs._clients;
 	return (*this);
 }
@@ -58,7 +67,7 @@ Server & Server::operator=(Server && rhs)
 	this->_clients = std::move(rhs._clients);
 	rhs._sockfd = 0;
 	rhs._epollfd = 0;
-	rhs._reporter = NULL;
+	rhs._reporter = nullptr;
 	return (*this);
 }
 

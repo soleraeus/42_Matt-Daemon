@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/28 21:28:04 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/02 20:29:40 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,7 @@
 Client::Client(void): _fd(0){}
 Client::Client(int fd): _fd(fd){}
 
-Client::Client(const Client & src): _fd(src._fd), _buffer(src._buffer) {}
+Client::Client(const Client & src): _fd(dup(src._fd)), _buffer(src._buffer) {}
 Client::Client(Client && src): _fd(std::move(src._fd)), _buffer(std::move(src._buffer)) {
 	src._fd = 0;
 }
@@ -29,13 +29,15 @@ Client & Client::operator=(const Client & rhs)
 {
 	if (this == &rhs)
 		return (*this);
-	this->_fd = rhs._fd;
+	this->_fd = dup(rhs._fd);
 	this->_buffer = rhs._buffer;
 	return (*this);
 }
 
 Client & Client::operator=(Client && rhs)
 {
+	if (this == &rhs)
+		return (*this);
 	this->_fd = rhs._fd;
 	rhs._fd = 0;
 	this->_buffer = std::move(rhs._buffer);
