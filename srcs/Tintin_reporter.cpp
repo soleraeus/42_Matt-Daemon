@@ -12,6 +12,8 @@
 
 #include "Tintin_reporter.hpp"
 
+#include <filesystem>
+
 Tintin_reporter::Tintin_reporter(void) noexcept {}
 
 Tintin_reporter::Tintin_reporter(std::string const & filepath): _filepath(filepath), _logfile(filepath, std::ios::out | std::ios::app)
@@ -115,6 +117,8 @@ void	Tintin_reporter::log(std::string && str, enum Loglevel level)
 
 	if (!this->_logfile.is_open())
 		throw std::logic_error("Log file is not opened");
+    if (!std::filesystem::exists(std::filesystem::path(this->_filepath)))
+      std::cerr << "File does not exist anymore" << std::endl;
 	log = this->get_time();
 	switch (level)
 	{
@@ -129,6 +133,8 @@ void	Tintin_reporter::log(std::string && str, enum Loglevel level)
 			break ;
 	}
 	this->_logfile << log << std::endl;
+	if (!this->_logfile.good())
+		std::cerr << "Error condition on logfile" << std::endl; 
 }
 
 void	Tintin_reporter::log(std::string const & str, enum Loglevel level)
@@ -137,6 +143,8 @@ void	Tintin_reporter::log(std::string const & str, enum Loglevel level)
 
 	if (!this->_logfile.is_open())
 		throw std::logic_error("Log file is not opened");
+    if (!std::filesystem::exists(std::filesystem::path(this->_filepath)))
+      std::cerr << "File does not exist anymore" << std::endl;
 	log = this->get_time();
 	switch (level)
 	{
