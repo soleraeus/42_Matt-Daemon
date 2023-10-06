@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/06 20:44:34 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/06 20:53:42 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,7 +44,7 @@ Client & Client::operator=(Client && rhs)
 	return (*this);
 }
 
-bool	Client::receive(std::shared_ptr<Tintin_reporter> reporter)
+Client::Return	Client::receive(std::shared_ptr<Tintin_reporter> reporter)
 {
 	ssize_t					len = 0;
 	std::string::size_type	pos;
@@ -52,7 +52,7 @@ bool	Client::receive(std::shared_ptr<Tintin_reporter> reporter)
 	
 	len = recv(this->_fd, (void *)this->_recv_buffer, PIPE_BUF, MSG_DONTWAIT);
 	if (len <= 0)
-		return (false);
+		return Client::Return::KICK;
 	this->_recv_buffer[len] ='\0';
 	this->_buffer += this->_recv_buffer;
 	while ((pos = this->_buffer.find('\r')) != std::string::npos)
@@ -63,12 +63,10 @@ bool	Client::receive(std::shared_ptr<Tintin_reporter> reporter)
 	{
 		sub = this->_buffer.substr(0, pos);
 		if (sub == "quit")
-		{
-			g_sig = -1;
-			return (true);
-		}
-		reporter->client_log(sub);
+			return Client::Return::QUIT;
+		if (reporter->client_log(sub) != Tintin_reporter::Return::OK)
+			return Client::Return::QUIT;
 		this->_buffer.erase(0, pos + 1);
 	}
-	return (true);
+	return Client::Return::OK;
 }

@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:42:18 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/06 20:32:27 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/06 21:14:21 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -119,8 +119,8 @@ bool	Server::epoll_del(int fd)
 
 void	Server::serve(void)
 {
-	int	new_connection = 0;
-	int	nb_events = 0;
+	int								new_connection = 0;
+	int								nb_events = 0;
 	std::map<int, Client>::iterator	it;
 
 	if (!this->_reporter)
@@ -130,31 +130,35 @@ void	Server::serve(void)
 	memset(this->_events, 0, sizeof(struct epoll_event) * 5);
 	if (!this->epoll_add(this->_sockfd, EPOLLIN))
 	{
-		this->_reporter->log("Could not initialize epoll on socket", ERROR);
+		if (this->_reporter->log("Could not initialize epoll on socket", ERROR) != Tintin_reporter::Return::OK) {}
+		return ;
 	}
 	while (true)
 	{
 		nb_events = epoll_wait(this->_epollfd, this->_events, 5, 1000 * 60 * 15);
 		if (g_sig > 0)
 		{
-			this->_reporter->log("Signal handler.", INFO);
+			if (this->_reporter->log("Signal handler.", INFO) != Tintin_reporter::Return::OK) {}
 			return ;
 		}
 		if (nb_events > 0)
 		{
 			for (int i = 0; i < nb_events; ++i)
 			{
-				if ((it = this->_clients.find(this->_events[i].data.fd)) != this->_clients.end())
+				[[likely]] if ((it = this->_clients.find(this->_events[i].data.fd)) != this->_clients.end())
 				{
-					if (!it->second.receive(this->_reporter))
+					switch (it->second.receive(this->_reporter))
 					{
-						this->epoll_del(this->_events[i].data.fd);
-						this->_clients.erase(it);
-					}
-					if (g_sig == -1)
-					{
-						if (this->_reporter->log("Request quit.", INFO) != Tintin_reporter::Return::OK) {}
-						return ;
+						case Client::Return::QUIT:
+							if (this->_reporter->log("Request quit.", INFO) != Tintin_reporter::Return::OK) {}
+							return ;
+							break ;
+						case Client::Return::KICK:
+							this->epoll_del(this->_events[i].data.fd);
+							this->_clients.erase(it);
+							break ;
+						[[likely]] default:
+							break;
 					}
 				}
 				else if (this->_events[i].data.fd == this->_sockfd)

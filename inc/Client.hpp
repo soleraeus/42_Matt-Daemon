@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:17:35 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/06 20:30:58 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/06 21:00:27 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,12 @@
 class Client
 {
 	public:
+		enum class Return {
+			QUIT,
+			KICK,
+			OK
+		};
+
 		Client(void);
 		Client(int fd);
 
@@ -37,7 +43,7 @@ class Client
 		Client &	operator=(const Client & rhs);
 		Client &	operator=(Client && rhs);
 
-		bool		receive(std::shared_ptr<Tintin_reporter> reporter);
+		[[nodiscard]] Client::Return	receive(std::shared_ptr<Tintin_reporter> reporter);
 
 	private:
 

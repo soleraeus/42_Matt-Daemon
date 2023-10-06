@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:21 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/06 20:25:55 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/06 21:01:27 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,10 +45,10 @@ class Tintin_reporter
 		Tintin_reporter&	operator=(Tintin_reporter && rhs);
 
 		//Member functions
-		Tintin_reporter::Return	client_log(std::string const & str);
-		Tintin_reporter::Return	client_log(std::string && str);
-		Tintin_reporter::Return	log(std::string && str, enum Loglevel level);
-		Tintin_reporter::Return	log(std::string const & str, enum Loglevel level);
+		[[nodiscard]] Tintin_reporter::Return	client_log(std::string const & str);
+		[[nodiscard]] Tintin_reporter::Return	client_log(std::string && str);
+		[[nodiscard]] Tintin_reporter::Return	log(std::string && str, enum Loglevel level);
+		[[nodiscard]] Tintin_reporter::Return	log(std::string const & str, enum Loglevel level);
 	
 	private:
 		std::string			get_time(void) const;
