@@ -81,15 +81,15 @@ docker:
 	docker build -t matt_daemon .
 	docker run -p ${INTERFACE}:${PORT}:4242 -d --name matt_daemon matt_daemon:latest
 
-.PHONY: cleandocker
-cleandocker:
+.PHONY: clean-docker
+clean-docker:
 	docker stop matt_daemon || true
 	docker rm matt_daemon || true
 	docker rmi matt_daemon:latest || true
 
 
-.PHONY: redocker
-redocker: cleandocker docker
+.PHONY: re-docker
+re-docker: clean-docker docker
 
 .PHONY: clean
 clean:
