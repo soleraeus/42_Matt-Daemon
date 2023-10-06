@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/02 20:29:40 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/06 20:44:34 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,14 +44,14 @@ Client & Client::operator=(Client && rhs)
 	return (*this);
 }
 
-bool	Client::receive(Tintin_reporter* reporter)
+bool	Client::receive(std::shared_ptr<Tintin_reporter> reporter)
 {
 	ssize_t					len = 0;
 	std::string::size_type	pos;
 	std::string				sub;
 	
 	len = recv(this->_fd, (void *)this->_recv_buffer, PIPE_BUF, MSG_DONTWAIT);
-	if (len < 0)
+	if (len <= 0)
 		return (false);
 	this->_recv_buffer[len] ='\0';
 	this->_buffer += this->_recv_buffer;

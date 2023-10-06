@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:21 by bdetune           #+#    #+#             */
-/*   Updated: 2023/09/27 20:08:25 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/06 20:25:55 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,13 @@
 class Tintin_reporter
 {
 	public:
+		enum class Return {
+			NO_FILE,
+			FILE_REMOVED,
+			SYSTEM_ERROR,
+			OK	
+		};
+
 		//Constructors
 		Tintin_reporter(void) noexcept;
 		Tintin_reporter(std::string const & filepath);
@@ -38,16 +45,16 @@ class Tintin_reporter
 		Tintin_reporter&	operator=(Tintin_reporter && rhs);
 
 		//Member functions
-		void				client_log(std::string const & str);
-		void				client_log(std::string && str);
-		void				log(std::string && str, enum Loglevel level);
-		void				log(std::string const & str, enum Loglevel level);
+		Tintin_reporter::Return	client_log(std::string const & str);
+		Tintin_reporter::Return	client_log(std::string && str);
+		Tintin_reporter::Return	log(std::string && str, enum Loglevel level);
+		Tintin_reporter::Return	log(std::string const & str, enum Loglevel level);
 	
 	private:
+		std::string			get_time(void) const;
+
 		std::string			_filepath;
 		std::fstream		_logfile;		
-
-		std::string			get_time(void) const;
 };
 
 #endif

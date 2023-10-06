@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:59:28 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/06 19:41:24 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/06 20:28:35 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -102,24 +102,30 @@ Tintin_reporter& Tintin_reporter::operator=(Tintin_reporter && rhs)
 }
 
 
-void	Tintin_reporter::client_log(std::string && str)
+Tintin_reporter::Return	Tintin_reporter::client_log(std::string && str)
 {
-	this->log("User input: " + str, LOG);
+	return (this->log("User input: " + str, LOG));
 }
-void	Tintin_reporter::client_log(std::string const & str)
+Tintin_reporter::Return	Tintin_reporter::client_log(std::string const & str)
 {
-	this->log("User input: " + str, LOG);
+	return (this->log("User input: " + str, LOG));
 }
 
-void	Tintin_reporter::log(std::string && str, enum Loglevel level)
+Tintin_reporter::Return	Tintin_reporter::log(std::string && str, enum Loglevel level)
 {
 	std::string	log;
 
 	if (!this->_logfile.is_open())
-		throw std::logic_error("Log file is not opened");
+		return Tintin_reporter::Return::NO_FILE;
     if (!std::filesystem::exists(std::filesystem::path(this->_filepath)))
-      std::cerr << "File does not exist anymore" << std::endl;
-	log = this->get_time();
+		return Tintin_reporter::Return::FILE_REMOVED;
+	try {
+		log = this->get_time();
+	} catch (const std::exception& e)
+	{
+		(void)e;
+		return Tintin_reporter::Return::SYSTEM_ERROR;
+	}
 	switch (level)
 	{
 		case ERROR:
@@ -133,19 +139,24 @@ void	Tintin_reporter::log(std::string && str, enum Loglevel level)
 			break ;
 	}
 	this->_logfile << log << std::endl;
-	if (!this->_logfile.good())
-		std::cerr << "Error condition on logfile" << std::endl; 
+	return Tintin_reporter::Return::OK ;
 }
 
-void	Tintin_reporter::log(std::string const & str, enum Loglevel level)
+Tintin_reporter::Return	Tintin_reporter::log(std::string const & str, enum Loglevel level)
 {
 	std::string	log;
 
 	if (!this->_logfile.is_open())
-		throw std::logic_error("Log file is not opened");
+		return Tintin_reporter::Return::NO_FILE;
     if (!std::filesystem::exists(std::filesystem::path(this->_filepath)))
-      std::cerr << "File does not exist anymore" << std::endl;
-	log = this->get_time();
+		return Tintin_reporter::Return::FILE_REMOVED;
+	try {
+		log = this->get_time();
+	} catch (const std::exception& e)
+	{
+		(void)e;
+		return Tintin_reporter::Return::SYSTEM_ERROR;
+	}
 	switch (level)
 	{
 		case ERROR:
@@ -159,8 +170,7 @@ void	Tintin_reporter::log(std::string const & str, enum Loglevel level)
 			break ;
 	}
 	this->_logfile << log << std::endl;
-	if (!this->_logfile.good())
-		std::cerr << "Error condition on logfile" << std::endl; 
+	return Tintin_reporter::Return::OK ;
 }
 
 std::string	Tintin_reporter::get_time(void) const

@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:17:35 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/02 20:28:00 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/06 20:30:58 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@
 # include <sys/types.h>
 # include <sys/socket.h>
 # include <unistd.h>
+# include <memory>
 
 class Client
 {
@@ -36,7 +37,7 @@ class Client
 		Client &	operator=(const Client & rhs);
 		Client &	operator=(Client && rhs);
 
-		bool		receive(Tintin_reporter* reporter);
+		bool		receive(std::shared_ptr<Tintin_reporter> reporter);
 
 	private:
 
