@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:33:42 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/02 21:18:38 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/06 20:22:40 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,13 +23,15 @@
 # include <netinet/in.h>
 # include <arpa/inet.h>
 # include <map>
+# include <memory>
 
 class Server
 {
 	public:
 		//Constructors
 		Server(void);
-		Server(Tintin_reporter * reporter) noexcept;
+		Server(std::shared_ptr<Tintin_reporter>& reporter) noexcept;
+		Server(std::shared_ptr<Tintin_reporter>&& reporter) noexcept;
 		Server(Server const & src);
 		Server(Server && src);
 
@@ -45,12 +47,12 @@ class Server
 		void	serve(void);
 	
 	private:
-		int						_sockfd;
-		int						_epollfd;
-		Tintin_reporter*		_reporter;
-		struct epoll_event		_events[5];
-		struct epoll_event		_init;
-		std::map<int, Client>	_clients;
+		int									_sockfd;
+		int									_epollfd;
+		std::shared_ptr<Tintin_reporter>	_reporter;
+		struct epoll_event					_events[5];
+		struct epoll_event					_init;
+		std::map<int, Client>				_clients;
 
 		//Private member functions
 		bool	epoll_add(int fd, uint32_t events);

@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/02 21:23:54 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/06 20:27:52 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,7 @@
 #include "Matt_daemon.hpp"
 #include "Tintin_reporter.hpp"
 #include "Server.hpp"
+#include <memory>
 
 volatile sig_atomic_t g_sig = 0;
 
@@ -56,7 +57,7 @@ bool	install_signal_handler(void)
 	return (true);
 }
 
-void	exit_procedure(Tintin_reporter * reporter, int & lock)
+void	exit_procedure(std::shared_ptr<Tintin_reporter>& reporter, int & lock)
 {
 	reporter->log("Quitting.", INFO);
 	if (lock > 0)
@@ -65,9 +66,9 @@ void	exit_procedure(Tintin_reporter * reporter, int & lock)
 
 int	main(void)
 {
-	int					lock;
-	Tintin_reporter*	reporter = nullptr;
-	Server				server;
+	int									lock;
+	std::shared_ptr<Tintin_reporter>	reporter;
+	Server								server;
 
 	if (getuid() != 0)
 	{
@@ -76,7 +77,7 @@ int	main(void)
 	}
 	try
 	{
-		reporter = new Tintin_reporter("/var/log/matt_daemon/matt_daemon.log");
+		reporter = std::make_shared<Tintin_reporter, const char*>("/var/log/matt_daemon/matt_daemon.log");
 	}
 	catch (std::exception const & e)
 	{
@@ -90,7 +91,6 @@ int	main(void)
 		std::cerr << "Could not open lockfile /var/lock/matt_daemon.lock" << std::endl;
 		reporter->log("Error, could no open lockfile /var/lock/matt_daemon.lock.", ERROR);
 		exit_procedure(reporter, lock);
-		delete reporter;
 		return (1);
 	}
 	if (flock(lock, LOCK_EX | LOCK_NB) == -1)
@@ -98,7 +98,6 @@ int	main(void)
 		std::cerr << "Could not lock /var/lock/matt_daemon.lock" << std::endl;
 		reporter->log("Error, could not lock /var/lock/matt_daemon.lock.", ERROR);
 		exit_procedure(reporter, lock);
-		delete reporter;
 		return (1);
 	}
 	if (!install_signal_handler())
@@ -106,7 +105,6 @@ int	main(void)
 		std::cerr << "Could not install signal handlers" << std::endl;
 		reporter->log("Could not install signal handlers", ERROR);
 		exit_procedure(reporter, lock);
-		delete reporter;
 		return (1);
 	}
 	reporter->log("Creating server.", INFO);
