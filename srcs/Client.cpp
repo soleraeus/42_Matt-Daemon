@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/06 20:31:27 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/06 20:44:34 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,7 +51,7 @@ bool	Client::receive(std::shared_ptr<Tintin_reporter> reporter)
 	std::string				sub;
 	
 	len = recv(this->_fd, (void *)this->_recv_buffer, PIPE_BUF, MSG_DONTWAIT);
-	if (len < 0)
+	if (len <= 0)
 		return (false);
 	this->_recv_buffer[len] ='\0';
 	this->_buffer += this->_recv_buffer;
