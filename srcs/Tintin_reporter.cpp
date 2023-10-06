@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:59:28 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/02 20:33:28 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/06 19:41:24 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -151,6 +151,8 @@ void	Tintin_reporter::log(std::string const & str, enum Loglevel level)
 			break ;
 	}
 	this->_logfile << log << std::endl;
+	if (!this->_logfile.good())
+		std::cerr << "Error condition on logfile" << std::endl; 
 }
 
 std::string	Tintin_reporter::get_time(void) const
