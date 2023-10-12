@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/09/27 17:55:22 by tnaton            #+#    #+#              #
-#    Updated: 2023/10/11 20:50:36 by bdetune          ###   ########.fr        #
+#    Updated: 2023/10/12 21:07:14 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -59,14 +59,14 @@ OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCS))
 
 $(NAME): $(OBJS) $(INC)
 	mkdir -p /var/log/matt_daemon
-	$(CXX) $(CXXFLAGS) $(OBJS) -o $@
+	$(CXX) $(CXXFLAGS) $(OBJS) libs/openssl-3.0.11/libcrypto.a -ldl -pthread -o $@
 
 $(OBJS): $(INC)
 
 $(OBJS) : | $(OBJDIR)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
-	$(CXX) $(CXXFLAGS) -I inc -o $@ -c $<
+	$(CXX) $(CXXFLAGS) -I inc -I libs/openssl-3.0.11/include -o $@ -c $<
 
 $(OBJDIR):
 	test -d $@ || mkdir -p $@

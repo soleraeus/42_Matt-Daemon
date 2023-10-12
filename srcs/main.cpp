@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/11 20:50:49 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/12 19:47:53 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -176,7 +176,7 @@ int	main(int ac, char **av)
 			break ;
 	}
 	Server server = Server(reporter);
-	if (!server.create_server())
+	if (!server.create_server(secure ? Server::ServerType::SECURE : (secure_only ? Server::ServerType::SECURE_ONLY : Server::ServerType::STANDARD)))
 	{
 		std::cerr << "Could not create server" << std::endl;
 		if (reporter->log("Could not create server", ERROR) != Tintin_reporter::Return::OK) {}

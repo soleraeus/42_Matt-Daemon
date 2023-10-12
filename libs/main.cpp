@@ -18,7 +18,7 @@ int encrypt(unsigned char *plaintext, int plaintext_len, unsigned char *key,
 
     int len;
     int ciphertext_len;
-RAND_bytes(buffer, sizeof(buffer));
+
     /* Create and initialise the context */
     if(!(ctx = EVP_CIPHER_CTX_new()))
         handleErrors();
