@@ -121,6 +121,7 @@ Client::Return	Client::receive(std::shared_ptr<Tintin_reporter> reporter)
 	len = recv(this->_fd, (void *)this->_recv_buffer, PIPE_BUF, MSG_DONTWAIT);
 	if (len <= 0)
 		return Client::Return::KICK;
+    std::cerr << "Received " << len << " bytes" << std::endl;
 	this->_recv_buffer[len] ='\0';
 	if (this->_secure)
 	{
