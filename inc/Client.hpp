@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:17:35 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/12 21:00:48 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/13 21:21:08 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,11 +17,13 @@
 # include <string>
 # include <climits>
 # include <stddef.h>
+# include <cstdlib>
 # include <cstring>
 # include <sys/types.h>
 # include <sys/socket.h>
 # include <unistd.h>
 # include <memory>
+# include <vector>
 # include <openssl/rand.h>
 # include <system_error>
 
@@ -49,12 +51,17 @@ class Client
 
 	private:
 
-		int				_fd;
-		bool			_secure;
-		unsigned char*	_key;
-		unsigned char	_iv[16];
-		char			_recv_buffer[PIPE_BUF + 1];
-		std::string		_buffer;
+		int					_fd;
+		int					_packetsize;
+		bool				_secure;
+		unsigned char*		_key;
+		unsigned char		_iv[16];
+		char				_recv_buffer[PIPE_BUF + 1];
+		std::string			_buffer;
+		std::vector<char>	_header;
+		std::vector<char>	_encrypted_buffer;
+
+		Client::Return	getPacketSize(ssize_t& size);
 };
 
 #endif
