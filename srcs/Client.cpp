@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/13 21:32:23 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/13 21:42:03 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,42 +70,40 @@ Client & Client::operator=(Client && rhs)
 
 Client::Return	Client::getPacketSize(ssize_t& size)
 {
-	size_t	prev = this->_header.size();
 	size_t	pos = 0;
 
-	this->_header.insert(this->_header.end(), this->_encrypted_buffer.begin(), this->_encrypted_buffer.end());
-	for (size_t i = 0; i < this->_header.size(); ++i)
+	for (size_t i = 0; i < this->_encrypted_buffer.size(); ++i)
 	{
 		std::cerr << "Found \\n at position" << i << std::endl;
-		if (this->_header[i] == '\n')
+		if (this->_encrypted_buffer[i] == '\n')
 		{
 			if (i < 8 || i > 12)
 				return Client::Return::KICK;
-			if (memcmp((void *)"Length ",(void *)&this->_header[0], 7))
+			if (memcmp((void *)"Length ",(void *)&this->_encrypted_buffer[0], 7))
 				return Client::Return::KICK;
 			pos = i;
-			if (this->_header[i - 1] == '\r')
+			if (this->_encrypted_buffer[i - 1] == '\r')
 				pos = i - 1;
 			if (pos == 7)
 				return Client::Return::KICK;
-			this->_header[pos] = '\0';
+			this->_encrypted_buffer[pos] = '\0';
 			for (size_t j = 7; j < pos; ++j)
 			{
-				if (this->_header[j] < '0' || this->_header[j] > '9')
+				if (this->_encrypted_buffer[j] < '0' || this->_encrypted_buffer[j] > '9')
 					return Client::Return::KICK;
 			}
-			this->_packetsize = std::atoi(&this->_header[7]);
+			this->_packetsize = std::atoi(&this->_encrypted_buffer[7]);
 			if (this->_packetsize > PIPE_BUF)
 				return Client::Return::KICK;
-			size = i - prev;
+			size = i;
 			return Client::Return::OK;
 		}
-		if (this->_header[i] < ' ' || this->_header[i] > 'z') {
+		if (this->_encrypted_buffer[i] < ' ' || this->_encrypted_buffer[i] > 'z') {
 			return Client::Return::KICK;
 		}
 	}
 	size = -1;
-	if (this->_header.size() > 12)
+	if (this->_encrypted_buffer.size() > 12)
 		return Client::Return::KICK;
 	return Client::Return::OK;
 }
@@ -134,7 +132,6 @@ Client::Return	Client::receive(std::shared_ptr<Tintin_reporter> reporter)
 			if (rm < 0)
 				return Client::Return::OK;
 			std::cerr << "To remove: " << rm << std::endl;
-			this->_header.clear();
 			this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + rm + 1);
 			rm = 0;
 		}
