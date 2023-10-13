@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/13 21:23:28 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/13 21:32:23 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -76,6 +76,7 @@ Client::Return	Client::getPacketSize(ssize_t& size)
 	this->_header.insert(this->_header.end(), this->_encrypted_buffer.begin(), this->_encrypted_buffer.end());
 	for (size_t i = 0; i < this->_header.size(); ++i)
 	{
+		std::cerr << "Found \\n at position" << i << std::endl;
 		if (this->_header[i] == '\n')
 		{
 			if (i < 8 || i > 12)
