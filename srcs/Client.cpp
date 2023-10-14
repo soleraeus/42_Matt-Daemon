@@ -75,7 +75,6 @@ Client::Return	Client::getPacketSize(void)
 	this->_packetsize = 0;
 	for (size_t i = 0; i < this->_encrypted_buffer.size(); ++i)
 	{
-		std::cerr << "Found \\n at position" << i << std::endl;
 		if (this->_encrypted_buffer[i] == '\n')
 		{
 			if (i < 8 || i > 12)
@@ -99,7 +98,8 @@ Client::Return	Client::getPacketSize(void)
 			this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + i + 1);
 			return Client::Return::OK;
 		}
-		if (this->_encrypted_buffer[i] < ' ' || this->_encrypted_buffer[i] > 'z') {
+		if ((this->_encrypted_buffer[i] < ' ' || this->_encrypted_buffer[i] > 'z')
+            && this->_encrypted_buffer[i] != '\r') {
 			return Client::Return::KICK;
 		}
 	}
