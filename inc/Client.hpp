@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:17:35 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/13 21:21:08 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/14 14:04:53 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,7 +47,7 @@ class Client
 		Client &	operator=(const Client & rhs);
 		Client &	operator=(Client && rhs);
 
-		[[nodiscard]] Client::Return	receive(std::shared_ptr<Tintin_reporter> reporter);
+		[[nodiscard]] Client::Return	receive(std::shared_ptr<Tintin_reporter>& reporter);
 
 	private:
 
@@ -58,10 +58,10 @@ class Client
 		unsigned char		_iv[16];
 		char				_recv_buffer[PIPE_BUF + 1];
 		std::string			_buffer;
-		std::vector<char>	_header;
 		std::vector<char>	_encrypted_buffer;
 
-		Client::Return	getPacketSize(ssize_t& size);
+		Client::Return		getPacketSize(void);
+		Client::Return		flush(std::shared_ptr<Tintin_reporter>& reporter);
 };
 
 #endif
