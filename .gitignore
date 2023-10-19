@@ -7,6 +7,7 @@ vscode/
 *.a
 Matt_daemon
 Ben_AFK_cli
+!Ben_AFK_cli/
 log
 
 
