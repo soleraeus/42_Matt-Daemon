@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/09/27 17:55:22 by tnaton            #+#    #+#              #
-#    Updated: 2023/10/12 21:07:14 by bdetune          ###   ########.fr        #
+#    Updated: 2023/10/19 22:43:15 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -33,6 +33,8 @@ INC = Matt_daemon.hpp \
 	  Server.hpp \
 	  Client.hpp
 
+OPENSSL = libs/openssl-3.0.11/libcrypto.a
+
 MOREFLAGS = -Wformat=2				\
 			-Wformat-overflow=2		\
 			-Wformat-truncation=2	\
@@ -57,7 +59,7 @@ CXX = g++
 
 OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o,$(SRCS))
 
-$(NAME): $(OBJS) $(INC)
+$(NAME): $(OPENSSL) $(OBJS) $(INC)
 	mkdir -p /var/log/matt_daemon
 	$(CXX) $(CXXFLAGS) $(OBJS) libs/openssl-3.0.11/libcrypto.a -ldl -pthread -o $@
 
@@ -72,6 +74,10 @@ $(OBJDIR):
 	test -d $@ || mkdir -p $@
 
 .SECONDARY: $(OBJS)
+
+$(OPENSSL):
+	test -d libs/openssl-3.0.11 || (cd libs; tar -xvf openssl-3.0.11.tar.gz)
+	cd libs/openssl-3.0.11; ./config no-idea no-camellia no-seed no-bf no-cast no-des no-rc2 no-rc4 no-rc5 no-md2 no-md4 no-mdc2 no-dsa no-dh no-ec no-ecdsa no-ecdh no-sock no-ssl3 no-err no-engine; make depend; make build_generated libcrypto.a
 
 .PHONY: all
 all : $(NAME)
