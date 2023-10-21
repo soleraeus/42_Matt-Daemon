@@ -6,13 +6,13 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:55:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/19 22:37:32 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/21 13:33:41 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
 
-Client::Client(const char* ip, bool secure): _secure(secure), _sockfd(0), _RSA_key(NULL), _mem(NULL), _pubkey(NULL), _pubkey_len(0) {
+Client::Client(const char* ip, bool secure): _secure(secure), _handshake(false), _sockfd(0), _RSA_key(NULL), _mem(NULL), _pubkey(NULL), _pubkey_len(0), _epollfd(0) {
 	if (secure)	{
 		_RSA_key = EVP_RSA_gen(4096);
 		if (!_RSA_key) {
@@ -36,7 +36,7 @@ Client::Client(const char* ip, bool secure): _secure(secure), _sockfd(0), _RSA_k
 		}
 	}
 	bzero(&_sockaddr, sizeof(_sockaddr));
-	if ((_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0)) <= 0) {
+	if ((_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0)) <= 0) {
 		EVP_PKEY_free(_RSA_key);
 		BIO_free(_mem);
 		throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create socket");
@@ -44,14 +44,16 @@ Client::Client(const char* ip, bool secure): _secure(secure), _sockfd(0), _RSA_k
 	_sockaddr.sin_family = AF_INET;
     _sockaddr.sin_port = secure ? htons(4343) : htons(4242);
 	if (inet_pton(AF_INET, ip ? ip : "127.0.0.1", &_sockaddr.sin_addr) <= 0) {
-		EVP_PKEY_free(_RSA_key);
-		BIO_free(_mem);
+		if (_RSA_key)
+			EVP_PKEY_free(_RSA_key);
+		if (_mem)
+			BIO_free(_mem);
 		close(_sockfd);
 		throw std::system_error(std::make_error_code(std::errc::bad_address), "Bad ip address provided");
 	}
 }
 
-Client::Client(const Client& src): _secure(src._secure), _sockfd(0), _RSA_key(NULL), _mem(NULL), _pubkey(NULL), _pubkey_len(0) {
+Client::Client(const Client& src): _secure(src._secure), _handshake(src._handshake), _sockfd(0), _RSA_key(NULL), _mem(NULL), _pubkey(NULL), _pubkey_len(0), _epollfd(0) {
 	if (src._RSA_key) {
 		_RSA_key = EVP_PKEY_dup(src._RSA_key);
 		if (!_RSA_key) {
@@ -78,17 +80,34 @@ Client::Client(const Client& src): _secure(src._secure), _sockfd(0), _RSA_key(NU
 	if (src._sockfd > 0) {
 		_sockfd = dup(src._sockfd);
 		if (_sockfd <= 0) {
+			if (_RSA_key)
+				EVP_PKEY_free(_RSA_key);
+			if (_mem)
+				BIO_free(_mem);
 			throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicate socket");
+		}
+	}
+	if (src._epollfd > 0) {
+		_epollfd = dup(src._epollfd);
+		if (_epollfd <= 0) {
+			if (_RSA_key)
+				EVP_PKEY_free(_RSA_key);
+			if (_mem)
+				BIO_free(_mem);
+			if (_sockfd > 0)
+				close(_sockfd);
+			throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicate epoll fd");
 		}
 	}
 }
 
-Client::Client(Client&& src): _secure(src._secure), _sockfd(src._sockfd), _RSA_key(src._RSA_key), _mem(src._mem), _pubkey(src._pubkey), _pubkey_len(src._pubkey_len) {
+Client::Client(Client&& src): _secure(src._secure), _handshake(src._handshake), _sockfd(src._sockfd), _RSA_key(src._RSA_key), _mem(src._mem), _pubkey(src._pubkey), _pubkey_len(src._pubkey_len), _epollfd(src._epollfd) {
 	memcpy((void *)&_sockaddr, (void *)&src._sockaddr, sizeof(_sockaddr));
 	src._sockfd = 0;
 	src._RSA_key = NULL;
 	src._mem = NULL;
 	src._pubkey = NULL;
+	src._epollfd = 0;
 }
 
 Client::~Client(void) {
@@ -98,12 +117,15 @@ Client::~Client(void) {
 		EVP_PKEY_free(_RSA_key);
 	if (_mem)
 		BIO_free(_mem);
+	if (_epollfd > 0)
+		close(_epollfd);
 }
 
 Client&	Client::operator=(const Client& rhs) {
 	if (this == &rhs)
 		return (*this);
 	_secure = rhs._secure;
+	_handshake = rhs._handshake;
 	if (_sockfd > 0) {
 		close(_sockfd);
 		_sockfd = 0;
@@ -142,7 +164,23 @@ Client&	Client::operator=(const Client& rhs) {
 	if (rhs._sockfd >= 0) {
 		_sockfd = dup(rhs._sockfd);
 		if (_sockfd <= 0) {
+			if (_RSA_key)
+				EVP_PKEY_free(_RSA_key);
+			if (_mem)
+				BIO_free(_mem);
 			throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicate socket");
+		}
+	}
+	if (rhs._epollfd > 0) {
+		_epollfd = dup(rhs._epollfd);
+		if (_epollfd <= 0) {
+			if (_RSA_key)
+				EVP_PKEY_free(_RSA_key);
+			if (_mem)
+				BIO_free(_mem);
+			if (_sockfd > 0)
+				close(_sockfd);
+			throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicate epoll fd");
 		}
 	}
 	return (*this);
@@ -164,6 +202,7 @@ Client&	Client::operator=(Client&& rhs) {
 		_mem = nullptr;
 	}
 	_secure = rhs._secure;
+	_handshake = rhs._handshake;
 	_sockfd = rhs._sockfd;
 	rhs._sockfd = 0;
 	_RSA_key = rhs._RSA_key;
@@ -174,6 +213,8 @@ Client&	Client::operator=(Client&& rhs) {
 	rhs._pubkey = nullptr;
 	_pubkey_len = rhs._pubkey_len;
 	memcpy((void *)&_sockaddr, (void *)&rhs._sockaddr, sizeof(_sockaddr));
+	_epollfd = rhs._epollfd;
+	rhs._epollfd = 0;
 	return (*this);
 }
 
@@ -187,4 +228,89 @@ void	Client::printPubkey(void)
 			std::cout << _pubkey[i];
 		}
 	}
+}
+
+int	Client::run(void) {
+	std::string	buf;
+	int			hasevent = 0;
+	ssize_t		ret = 0;
+
+	if (connect(_sockfd, (struct sockaddr*)&_sockaddr, sizeof(_sockaddr)) == -1) {
+		std::cerr << "Could not connect to server" << std::endl;
+		return 1;
+	}
+	_epollfd = epoll_create(1);
+	if (_epollfd <= 0) {
+		std::cerr << "Could not create epoll fd" << std::endl;
+		return 1;
+	}
+	memset(&_event, 0, sizeof(_event));
+	_event.data.fd = _sockfd;
+	_event.events = EPOLLOUT;
+	if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, _sockfd, &_event) == -1) {
+		std::cerr << "Could not add socket to epoll" << std::endl;
+		return 1;
+	}
+	while (true) {
+		if (!(_secure && !_handshake) && buf.empty()) {
+			std::getline(std::cin, buf);
+			if (std::cin.eof()) {
+				epoll_ctl(_epollfd, EPOLL_CTL_DEL, _sockfd, &_event);
+				return 0;
+			}
+		}
+		hasevent = epoll_wait(_epollfd, &_event, 1, 1000*60*2);
+		if (hasevent > 0) {
+			if (_event.events & EPOLLHUP) {
+				std::cerr << "Server disconnected" << std::endl;
+				return 1;
+			}
+			if (_secure && !_handshake) {
+				if (_event.events & EPOLLOUT) {
+					if (buf.empty()) {
+						buf = "Length " + std::to_string(_pubkey_len);
+						buf += "\n";
+						buf.insert(buf.end(), _pubkey, _pubkey + _pubkey_len);
+						ret = send(_sockfd, buf.data(), buf.size(), MSG_DONTWAIT);
+						if (ret <= 0) {
+							std::cerr << "Could not send packet to server" << std::endl;
+							return 1;
+						}
+						buf.erase(buf.begin(), buf.begin() + ret);
+					}
+					else {
+						ret = send(_sockfd, buf.data(), buf.size(), MSG_DONTWAIT);
+						if (ret <= 0) {
+							std::cerr << "Could not send packet to server" << std::endl;
+							return 1;
+						}
+						buf.erase(buf.begin(), buf.begin() + ret);
+					}
+					if (buf.empty()) {
+						memset(&_event, 0, sizeof(_event));
+						_event.data.fd = _sockfd;
+						_event.events = EPOLLIN;
+						std::cerr << "Waiting to receive symmetric key" << std::endl;
+						if (epoll_ctl(_epollfd, EPOLL_CTL_MOD, _sockfd, &_event) == -1) {
+							std::cerr << "Could not add socket to epoll" << std::endl;
+							return 1;
+						}
+					}
+				}
+			}
+			else if (!_secure) {
+				buf += "\n";
+				ret = send(_sockfd, buf.data(), buf.size(), MSG_DONTWAIT);
+				if (ret <= 0) {
+					std::cerr << "Could not send packet to server" << std::endl;
+					return 1;
+				}
+				buf.erase(buf.begin(), buf.begin() + ret);
+			}
+			else {
+				std::cerr << "Not implemented yet" << std::endl;
+			}
+		}
+	}
+	return 0;
 }

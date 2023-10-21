@@ -47,5 +47,5 @@ int	main(int ac, char **av)
 		return 1;
 	}
 	client.printPubkey();
-	return (0);
+	return client.run();
 }

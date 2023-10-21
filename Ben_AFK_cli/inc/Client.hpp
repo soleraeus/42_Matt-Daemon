@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:50:15 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/19 22:24:59 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/21 13:06:46 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,8 @@
 # include <unistd.h>
 # include <string.h>
 # include <system_error>
+# include <sys/epoll.h>
+# include <sys/types.h>
 
 //Openssl
 # include <openssl/evp.h>
@@ -37,15 +39,19 @@ class Client {
 		Client&	operator=(Client&& rhs);
 
 		void	printPubkey(void);
+		int		run(void);
 
 	private:
 		bool				_secure;
+		bool				_handshake;
 		int					_sockfd;
 		EVP_PKEY*			_RSA_key;
 		BIO*				_mem;
 		char*				_pubkey;
 		long				_pubkey_len;
 		struct sockaddr_in	_sockaddr;
+		int					_epollfd;
+		struct epoll_event	_event;
 };
 
 #endif
