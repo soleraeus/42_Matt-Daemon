@@ -161,7 +161,6 @@ Client::Return	Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
 				memcpy(this->_RSA_buf, this->_encrypted_buffer.data(), this->_packetsize);
 				this->_RSA_buf[this->_packetsize] = '\0';
 				this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
-				this->_packetsize = 0;
 				return (this->sendKey());
 			}
 			std::cerr << "It would be time to decrypt" << std::endl;
@@ -177,11 +176,14 @@ Client::Return	Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
 }
 
 Client::Return	Client::sendKey(void) {
+    size_t  outlen;
+
 	//Putting public key received in BIO
 	BIO*		pubKey = BIO_new_mem_buf((void*) this->_RSA_buf, this->_packetsize);
 	if (!pubKey)
 		return Client::Return::KICK;
 
+	this->_packetsize = 0;
 	//Using the BIO to create an EVP_KEY
 	EVP_PKEY* RSA_key = NULL;
 	RSA_key	= PEM_read_bio_PUBKEY(pubKey, &RSA_key, NULL, NULL);
@@ -190,8 +192,83 @@ Client::Return	Client::sendKey(void) {
 		BIO_free(pubKey);
 		return Client::Return::KICK;
 	}
-	BIO_free(pubKey);
+    EVP_PKEY_CTX*   ctx = EVP_PKEY_CTX_new(RSA_key, NULL);
+    if (!ctx) {
+      std::cerr << "Could not create context" << std::endl;
+      BIO_free(pubKey);
+      EVP_PKEY_free(RSA_key);
+      return Client::Return::KICK;
+    }
+    if (EVP_PKEY_encrypt_init(ctx) <= 0) {
+      EVP_PKEY_CTX_free(ctx);
+      EVP_PKEY_free(RSA_key);
+      BIO_free(pubKey);
+      std::cerr << "Could not init encryption" <<std::endl;
+      return Client::Return::KICK;
+    }
+    if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
+      EVP_PKEY_CTX_free(ctx);
+      EVP_PKEY_free(RSA_key);
+      BIO_free(pubKey);
+      std::cerr << "Could not set padding" <<std::endl;
+      return Client::Return::KICK;
+    }
+    std::string out;
+    out.assign(this->_key, this->_key + 32);
+    out.insert(out.end(), this->_iv, this->_iv + 16);
+    if (EVP_PKEY_encrypt(ctx, nullptr, &outlen, (const unsigned char*) out.data(), out.size()) <= 0) {
+      std::cerr << "Could not get length of encrypted result" << std::endl;
+      EVP_PKEY_CTX_free(ctx);
+      EVP_PKEY_free(RSA_key);
+      BIO_free(pubKey);
+      return Client::Return::KICK;
+    }
+    std::cerr << "Payload is " << outlen << " bytes" << std::endl;
+    unsigned char* out_tmp_buf = NULL; 
+    try {
+      out_tmp_buf = new unsigned char[outlen];
+    }
+    catch (std::exception const & e) {
+      std::cerr << "Allocation error" << std::endl;
+      EVP_PKEY_CTX_free(ctx);
+      EVP_PKEY_free(RSA_key);
+      BIO_free(pubKey);
+      return Client::Return::KICK;
+    }
+    if (EVP_PKEY_encrypt(ctx, out_tmp_buf, &outlen, (const unsigned char*) out.data(), out.size()) <= 0) {
+      std::cerr << "Could encrypt buffer" << std::endl;
+      delete [] out_tmp_buf;
+      EVP_PKEY_CTX_free(ctx);
+      EVP_PKEY_free(RSA_key);
+      BIO_free(pubKey);
+      return Client::Return::KICK;
+    }
+    this->_send_buffer = "Length ";
+    this->_send_buffer += std::to_string(outlen);
+    this->_send_buffer += "\n";
+    std::cerr << "Length: " << outlen << std::endl;
+    this->_send_buffer.insert(this->_send_buffer.end(), out_tmp_buf, out_tmp_buf + outlen);
+    std::cerr << "Original key" << std::endl;
+    for (int i = 0; i < 32; ++i) {
+      std::cerr << std::setw(2) << std::setfill('0') << std::hex << (int)this->_key[i];
+    }
+    std::cerr << std::endl << "Original iv" << std::endl;
+    for (int i = 0; i < 16; ++i) {
+      std::cerr << std::setw(2) << std::setfill('0') << std::hex << (int)this->_iv[i];
+    }
+    std::cerr << std::endl << "Encrypted" << std::endl;
+    for (size_t i = this->_send_buffer.find('\n') + 1; i < this->_send_buffer.size(); ++i) {
+      std::cerr << std::setw(2) << std::setfill('0') << std::hex << (int)this->_send_buffer[i];
+    }
+    std::cerr << std::endl << std::dec << "Final length: " << this->_send_buffer.size() << std::endl;
+    delete [] out_tmp_buf;
+    EVP_PKEY_CTX_free(ctx);
 	EVP_PKEY_free(RSA_key);
+	BIO_free(pubKey);
 	std::cerr << "Succesfully loaded public key received" << std::endl;
 	return Client::Return::SEND;
+}
+
+std::string&    Client::getSendBuffer(void) {
+  return this->_send_buffer;
 }

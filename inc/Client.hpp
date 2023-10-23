@@ -19,6 +19,7 @@
 # include <stddef.h>
 # include <cstdlib>
 # include <cstring>
+# include <iomanip>
 # include <sys/types.h>
 # include <sys/socket.h>
 # include <unistd.h>
@@ -53,6 +54,7 @@ class Client
 		Client &	operator=(Client && rhs);
 
 		[[nodiscard]] Client::Return	receive(std::shared_ptr<Tintin_reporter>& reporter);
+        std::string&    getSendBuffer(void);
 
 	private:
 
@@ -65,6 +67,7 @@ class Client
 		unsigned char		_iv[16];
 		char				_recv_buffer[PIPE_BUF + 1];
 		std::string			_buffer;
+        std::string         _send_buffer;
 		std::vector<char>	_encrypted_buffer;
 
 		Client::Return		getPacketSize(void);
