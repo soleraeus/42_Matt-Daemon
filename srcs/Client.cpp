@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/23 19:51:25 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 19:59:16 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -158,7 +158,7 @@ Client::Return	Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
 			if (!this->_handshake) {
 				if (this->_packetsize > 1023)
 					return Client::Return::KICK;
-				memcpy(this->_RSA_buf, this->_encrypted_buffer, this->_packetsize);
+				memcpy(this->_RSA_buf, this->_encrypted_buffer.data(), this->_packetsize);
 				this->_RSA_buf[this->_packetsize] = '\0';
 				this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
 				this->_packetsize = 0;
@@ -188,7 +188,7 @@ Client::Return	Client::sendKey(void) {
 	if (!RSA_key) {
 		std::cerr << "Could not create RSA key" << std::endl;
 		BIO_free(pubkey);
-		return Client::Return::KICK
+		return Client::Return::KICK;
 	}
 	std::cerr << "Succesfully loaded public key received" << std::endl;
 	return Client::Return::SEND;

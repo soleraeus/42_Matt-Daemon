@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:17:35 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/23 19:39:23 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 19:59:01 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,9 @@
 # include <vector>
 # include <openssl/bio.h>
 # include <openssl/rand.h>
+# include <openssl/evp.h>
+# include <openssl/pem.h>
+# include <openssl/rsa.h>
 # include <system_error>
 
 class Client
