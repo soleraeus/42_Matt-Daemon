@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:33:42 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/12 20:27:21 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 21:28:44 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -68,6 +68,7 @@ class Server
 		//Private member functions
 		bool	epoll_add(int fd, uint32_t events);
 		bool	epoll_del(int fd);
+		bool	epoll_mod(int fd, uint32_t events);
 };
 
 #endif

@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:50:15 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/21 13:06:46 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 22:03:57 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,6 +52,14 @@ class Client {
 		struct sockaddr_in	_sockaddr;
 		int					_epollfd;
 		struct epoll_event	_event;
+		std::string			_buf;
+		size_t				_packetsize;
+		unsigned char		_recv_buffer[PIPE_BUF + 14];
+		ssize_t				_recv_len;
+		unsigned char		_key[32];
+		unsigned char		_iv[16];
+
+		bool				getPacketSize(void);
 };
 
 #endif

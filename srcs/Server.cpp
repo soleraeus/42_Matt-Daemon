@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:42:18 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/13 18:45:56 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 21:39:24 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -250,6 +250,13 @@ bool	Server::epoll_del(int fd)
 	return (epoll_ctl(this->_epollfd, EPOLL_CTL_DEL, fd, &this->_init) != -1);
 }
 
+bool	Server::epoll_mod(int fd, uint32_t events) {
+	memset(&this->_init, 0, sizeof(struct epoll_event));
+	this->_init.data.fd = fd;
+	this->_init.events = events;
+	return (epoll_ctl(this->_epollfd, EPOLL_CTL_MOD, fd, &this->_init) != -1);
+}
+
 void	Server::serve(void)
 {
 	int								new_connection = 0;
@@ -286,6 +293,20 @@ void	Server::serve(void)
 			{
 				[[likely]] if ((it = this->_clients.find(this->_events[i].data.fd)) != this->_clients.end())
 				{
+					if (this->_events[i].events & EPOLLOUT) {
+						switch (it->second.send()) {
+							case Client::Return::KICK:
+								this->epoll_del(this->_events[i].data.fd);
+								this->_clients.erase(it);
+								break ;
+							case Client::Return::SEND:
+								break ;
+							[[likely]] default:
+								this->epoll_mod(this->_events[i].data.fd, EPOLLIN);
+								break;
+						}
+						continue ;
+					}
 					switch (it->second.receive(this->_reporter))
 					{
 						case Client::Return::QUIT:
@@ -295,6 +316,9 @@ void	Server::serve(void)
 						case Client::Return::KICK:
 							this->epoll_del(this->_events[i].data.fd);
 							this->_clients.erase(it);
+							break ;
+						case Client::Return::SEND:
+							this->epoll_mod(this->_events[i].data.fd, EPOLLOUT);
 							break ;
 						[[likely]] default:
 							break;

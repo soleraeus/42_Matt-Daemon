@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/23 20:01:48 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 21:43:36 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -266,9 +266,22 @@ Client::Return	Client::sendKey(void) {
 	EVP_PKEY_free(RSA_key);
 	BIO_free(pubKey);
 	std::cerr << "Succesfully loaded public key received" << std::endl;
+	this->_handshake = true;
 	return Client::Return::SEND;
 }
 
-std::string&    Client::getSendBuffer(void) {
-  return this->_send_buffer;
+Client::Return    Client::send(void) {
+	std::cerr << "Sending key" << std::endl;
+	size_t ret = ::send(this->_fd, (void*) this->_send_buffer.data(), this->_send_buffer.size(), MSG_DONTWAIT);
+   if (ret <= 0) {
+	   std::cerr << "Could not send key to client" << std::endl;
+	   return Client::Return::KICK;
+   }
+   if (ret == this->_send_buffer.size()) {
+	   this->_send_buffer.clear();
+	   return Client::Return::OK;
+   }
+   std::cerr << "Sent " << ret << std::endl;
+   this->_send_buffer.erase(0, ret);
+   return Client::Return::SEND;
 }

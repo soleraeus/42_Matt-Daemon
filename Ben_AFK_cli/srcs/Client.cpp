@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:55:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/21 13:33:41 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 22:02:27 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -230,11 +230,53 @@ void	Client::printPubkey(void)
 	}
 }
 
+bool	Client::getPacketSize(void)
+{
+	size_t	pos = 0;
+
+	this->_packetsize = 0;
+	for (size_t i = 0; i < this->_buf.size(); ++i)
+	{
+		if (this->_buf[i] == '\n')
+		{
+			if (i < 8 || i > 12)
+				return false;
+			if (memcmp((void *)"Length ",(void *)&this->_buf[0], 7))
+				return false;
+			pos = i;
+			if (this->_buf[i - 1] == '\r')
+				pos = i - 1;
+			if (pos == 7)
+				return false;
+			this->_buf[pos] = '\0';
+			for (size_t j = 7; j < pos; ++j)
+			{
+				if (this->_buf[j] < '0' || this->_buf[j] > '9')
+					return false;
+			}
+			this->_packetsize = std::atoi(&this->_buf[7]);
+			if (this->_packetsize > PIPE_BUF)
+				return false;
+			this->_buf.erase(this->_buf.begin(), this->_buf.begin() + i + 1);
+			return true;
+		}
+		if ((this->_buf[i] < ' ' || this->_buf[i] > 'z')
+            && this->_buf[i] != '\r') {
+			return false;
+		}
+	}
+	if (this->_buf.size() > 12)
+		return false;
+	return true;
+}
+
+
 int	Client::run(void) {
 	std::string	buf;
 	int			hasevent = 0;
 	ssize_t		ret = 0;
 
+	this->_packetsize = 0;
 	if (connect(_sockfd, (struct sockaddr*)&_sockaddr, sizeof(_sockaddr)) == -1) {
 		std::cerr << "Could not connect to server" << std::endl;
 		return 1;
@@ -294,6 +336,23 @@ int	Client::run(void) {
 						if (epoll_ctl(_epollfd, EPOLL_CTL_MOD, _sockfd, &_event) == -1) {
 							std::cerr << "Could not add socket to epoll" << std::endl;
 							return 1;
+						}
+					}
+				}
+				else if (_event.events & EPOLLIN) {
+					this->_recv_len = recv(this->_sockfd, this->_recv_buffer, PIPE_BUF, MSG_DONTWAIT);
+					if (_recv_len <= 0) {
+						std::cerr << "Server disconnected" << std::endl;
+						return 1;
+					}
+					this->_buf.insert(this->_buf.end(), this->_recv_buffer, this->_recv_buffer + this->_recv_len);
+					if (!this->_packetsize && !this->getPacketSize()) {
+						std::cerr << "Invalid packet received from server" << std::endl;
+						return 1;
+					}
+					if (this->_packetsize) {
+						if (this->_buf.size() >= this->_packetsize) {
+							std::cerr << "Received key from Server" << std::endl;
 						}
 					}
 				}

@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:17:35 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/23 19:59:01 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 21:36:12 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,7 +54,7 @@ class Client
 		Client &	operator=(Client && rhs);
 
 		[[nodiscard]] Client::Return	receive(std::shared_ptr<Tintin_reporter>& reporter);
-        std::string&    getSendBuffer(void);
+		[[nodiscard]] Client::Return	send(void);
 
 	private:
 
