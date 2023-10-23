@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:55:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/23 22:27:39 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 22:32:23 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -415,9 +415,6 @@ bool	Client::decryptAESKey(void) {
       EVP_PKEY_CTX_free(ctx);
       return false;
     }
-	if (outlen != 48) {
-		std::cerr << "Invalid key received, expected exactly 48 bytes, received " << outlen << std::endl; 
-	}
     std::cerr << "Payload is " << outlen << " bytes" << std::endl;
     unsigned char* out_tmp_buf = NULL;
     try {
@@ -434,6 +431,9 @@ bool	Client::decryptAESKey(void) {
       EVP_PKEY_CTX_free(ctx);
       return false;
     }
+	if (outlen != 48) {
+		std::cerr << "Invalid key received, expected exactly 48 bytes, received " << outlen << std::endl; 
+	}
 	memcpy(this->_key, out_tmp_buf, 32);
 	memcpy(this->_iv, &out_tmp_buf[32], 16);
     std::cerr << "Received key" << std::endl;
