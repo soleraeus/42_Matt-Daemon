@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:55:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/23 22:02:27 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 22:07:32 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -353,6 +353,10 @@ int	Client::run(void) {
 					if (this->_packetsize) {
 						if (this->_buf.size() >= this->_packetsize) {
 							std::cerr << "Received key from Server" << std::endl;
+							for (size_t i = 0; i < this->_buf.size(); ++i) {
+								std::cerr << std::setw(2) << std::setfill('0') << std::hex << (int)this->_buf[i];
+							}
+							std::cerr << std::endl;
 						}
 					}
 				}

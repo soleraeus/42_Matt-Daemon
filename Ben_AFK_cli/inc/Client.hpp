@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:50:15 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/23 22:03:57 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 22:07:54 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 
 # include <arpa/inet.h>
 # include <iostream>
+# include <iomanip>
 # include <sys/socket.h>
 # include <unistd.h>
 # include <string.h>
