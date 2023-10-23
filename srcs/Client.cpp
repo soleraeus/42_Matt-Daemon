@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/23 19:59:16 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 20:01:48 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -183,13 +183,15 @@ Client::Return	Client::sendKey(void) {
 		return Client::Return::KICK;
 
 	//Using the BIO to create an EVP_KEY
-	EVP_KEY* RSA_key = NULL;
+	EVP_PKEY* RSA_key = NULL;
 	RSA_key	= PEM_read_bio_PUBKEY(pubKey, &RSA_key, NULL, NULL);
 	if (!RSA_key) {
 		std::cerr << "Could not create RSA key" << std::endl;
-		BIO_free(pubkey);
+		BIO_free(pubKey);
 		return Client::Return::KICK;
 	}
+	BIO_free(pubKey);
+	EVP_PKEY_free(RSA_key);
 	std::cerr << "Succesfully loaded public key received" << std::endl;
 	return Client::Return::SEND;
 }
