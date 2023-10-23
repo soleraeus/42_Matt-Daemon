@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:17:35 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/14 14:04:53 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 19:39:23 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,7 @@
 # include <unistd.h>
 # include <memory>
 # include <vector>
+# include <openssl/bio.h>
 # include <openssl/rand.h>
 # include <system_error>
 
@@ -33,6 +34,7 @@ class Client
 		enum class Return {
 			QUIT,
 			KICK,
+			SEND,
 			OK
 		};
 
@@ -54,6 +56,8 @@ class Client
 		int					_fd;
 		int					_packetsize;
 		bool				_secure;
+		bool				_handshake;
+		unsigned char		_RSA_buf[1024];
 		unsigned char*		_key;
 		unsigned char		_iv[16];
 		char				_recv_buffer[PIPE_BUF + 1];
@@ -62,6 +66,7 @@ class Client
 
 		Client::Return		getPacketSize(void);
 		Client::Return		flush(std::shared_ptr<Tintin_reporter>& reporter);
+		Client::Return		sendKey(void);
 };
 
 #endif

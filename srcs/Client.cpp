@@ -6,14 +6,14 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/14 14:05:00 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 19:51:25 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
 
-Client::Client(void): _fd(0), _packetsize(0), _secure(false), _key(NULL){}
-Client::Client(int fd, bool secure, unsigned char* key): _fd(fd), _packetsize(0), _secure(secure), _key(key){
+Client::Client(void): _fd(0), _packetsize(0), _secure(false), _handshake(false), _key(NULL){}
+Client::Client(int fd, bool secure, unsigned char* key): _fd(fd), _packetsize(0), _secure(secure), _handshake(false), _key(key){
 	if (secure)
 	{
 		if (!RAND_bytes(this->_iv, 16))
@@ -23,11 +23,13 @@ Client::Client(int fd, bool secure, unsigned char* key): _fd(fd), _packetsize(0)
 	}	
 }
 
-Client::Client(const Client & src): _fd(dup(src._fd)), _packetsize(src._packetsize), _secure(src._secure), _key(src._key), _buffer(src._buffer), _encrypted_buffer(src._encrypted_buffer) {
+Client::Client(const Client & src): _fd(dup(src._fd)), _packetsize(src._packetsize), _secure(src._secure), _handshake(src._handshake), _key(src._key), _buffer(src._buffer), _encrypted_buffer(src._encrypted_buffer) {
 	memcpy(this->_iv, src._iv, 16);
+	memcpy(this->_RSA_buf, src._RSA_buf, 1024);
 }
-Client::Client(Client && src): _fd(std::move(src._fd)), _packetsize(src._packetsize), _secure(src._secure), _key(src._key), _buffer(std::move(src._buffer)), _encrypted_buffer(std::move(src._encrypted_buffer)) {
+Client::Client(Client && src): _fd(std::move(src._fd)), _packetsize(src._packetsize), _secure(src._secure), _handshake(src._handshake), _key(src._key), _buffer(std::move(src._buffer)), _encrypted_buffer(std::move(src._encrypted_buffer)) {
 	memcpy(this->_iv, src._iv, 16);
+	memcpy(this->_RSA_buf, src._RSA_buf, 1024);
 	src._fd = 0;
 	src._key = NULL;
 }
@@ -44,10 +46,12 @@ Client & Client::operator=(const Client & rhs)
 	this->_fd = dup(rhs._fd);
 	this->_packetsize = rhs._packetsize;
 	this->_secure = rhs._secure;
+	this->_handshake = rhs._handshake;
 	this->_buffer = rhs._buffer;
 	this->_encrypted_buffer = rhs._encrypted_buffer;
 	this->_key = rhs._key;
 	memcpy(this->_iv, rhs._iv, 16);
+	memcpy(this->_RSA_buf, rhs._RSA_buf, 1024);
 	return (*this);
 }
 
@@ -59,12 +63,13 @@ Client & Client::operator=(Client && rhs)
 	rhs._fd = 0;
 	this->_packetsize = rhs._packetsize;
 	this->_secure = rhs._secure;
+	this->_handshake = rhs._handshake;
 	this->_buffer = std::move(rhs._buffer);
 	this->_encrypted_buffer = std::move(rhs._encrypted_buffer);
 	this->_key = rhs._key;
 	rhs._key = NULL;
 	memcpy(this->_iv, rhs._iv, 16);
-
+	memcpy(this->_RSA_buf, rhs._RSA_buf, 1024);
 	return (*this);
 }
 
@@ -150,6 +155,15 @@ Client::Return	Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
 			return ret;
 		while (this->_packetsize > 0 && this->_encrypted_buffer.size() >= static_cast<size_t>(this->_packetsize))
 		{
+			if (!this->_handshake) {
+				if (this->_packetsize > 1023)
+					return Client::Return::KICK;
+				memcpy(this->_RSA_buf, this->_encrypted_buffer, this->_packetsize);
+				this->_RSA_buf[this->_packetsize] = '\0';
+				this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
+				this->_packetsize = 0;
+				return (this->sendKey());
+			}
 			std::cerr << "It would be time to decrypt" << std::endl;
 			this->_buffer.insert(this->_buffer.end(), this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
 			this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
@@ -160,4 +174,22 @@ Client::Return	Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
 	else
 		this->_buffer.insert(this->_buffer.end(), this->_recv_buffer, &this->_recv_buffer[len]);
 	return (this->flush(reporter));
+}
+
+Client::Return	Client::sendKey(void) {
+	//Putting public key received in BIO
+	BIO*		pubKey = BIO_new_mem_buf((void*) this->_RSA_buf, this->_packetsize);
+	if (!pubKey)
+		return Client::Return::KICK;
+
+	//Using the BIO to create an EVP_KEY
+	EVP_KEY* RSA_key = NULL;
+	RSA_key	= PEM_read_bio_PUBKEY(pubKey, &RSA_key, NULL, NULL);
+	if (!RSA_key) {
+		std::cerr << "Could not create RSA key" << std::endl;
+		BIO_free(pubkey);
+		return Client::Return::KICK
+	}
+	std::cerr << "Succesfully loaded public key received" << std::endl;
+	return Client::Return::SEND;
 }
