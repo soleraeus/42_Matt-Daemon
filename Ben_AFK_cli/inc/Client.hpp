@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:50:15 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/23 22:07:54 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 22:21:50 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,6 +61,7 @@ class Client {
 		unsigned char		_iv[16];
 
 		bool				getPacketSize(void);
+		bool				decryptAESKey(void);
 };
 
 #endif

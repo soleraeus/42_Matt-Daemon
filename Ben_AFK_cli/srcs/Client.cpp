@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:55:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/23 22:07:32 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 22:27:39 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -297,6 +297,7 @@ int	Client::run(void) {
 		if (!(_secure && !_handshake) && buf.empty()) {
 			std::getline(std::cin, buf);
 			if (std::cin.eof()) {
+				std::cout << "Goodbye" << std::endl;
 				epoll_ctl(_epollfd, EPOLL_CTL_DEL, _sockfd, &_event);
 				return 0;
 			}
@@ -357,8 +358,21 @@ int	Client::run(void) {
 								std::cerr << std::setw(2) << std::setfill('0') << std::hex << (int)this->_buf[i];
 							}
 							std::cerr << std::endl;
+							if (!this->decryptAESKey())
+								return 1;
+							memset(&_event, 0, sizeof(_event));
+							_event.data.fd = _sockfd;
+							_event.events = EPOLLOUT;
+							if (epoll_ctl(_epollfd, EPOLL_CTL_MOD, _sockfd, &_event) == -1) {
+								std::cerr << "Could not modify socket event in epoll" << std::endl;
+								return 1;
+							}
 						}
 					}
+				}
+				else {
+					std::cerr << "Server disconnected" << std::endl;
+					return 1;
 				}
 			}
 			else if (!_secure) {
@@ -376,4 +390,64 @@ int	Client::run(void) {
 		}
 	}
 	return 0;
+}
+
+bool	Client::decryptAESKey(void) {
+    size_t  outlen;
+
+    EVP_PKEY_CTX*   ctx = EVP_PKEY_CTX_new(this->_RSA_key, NULL);
+    if (!ctx) {
+      std::cerr << "Could not create context" << std::endl;
+      return false;
+    }
+    if (EVP_PKEY_decrypt_init(ctx) <= 0) {
+      EVP_PKEY_CTX_free(ctx);
+      std::cerr << "Could not init decryption" <<std::endl;
+      return false;
+    }
+    if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
+      EVP_PKEY_CTX_free(ctx);
+      std::cerr << "Could not set padding" <<std::endl;
+      return false;
+    }
+    if (EVP_PKEY_decrypt(ctx, nullptr, &outlen, (const unsigned char*) this->_buf.data(), this->_buf.size()) <= 0) {
+      std::cerr << "Could not get length of decrypted result" << std::endl;
+      EVP_PKEY_CTX_free(ctx);
+      return false;
+    }
+	if (outlen != 48) {
+		std::cerr << "Invalid key received, expected exactly 48 bytes, received " << outlen << std::endl; 
+	}
+    std::cerr << "Payload is " << outlen << " bytes" << std::endl;
+    unsigned char* out_tmp_buf = NULL;
+    try {
+      out_tmp_buf = new unsigned char[outlen];
+    }
+    catch (std::exception const & e) {
+      std::cerr << "Allocation error" << std::endl;
+      EVP_PKEY_CTX_free(ctx);
+      return false;
+    }
+    if (EVP_PKEY_decrypt(ctx, out_tmp_buf, &outlen, (const unsigned char*) this->_buf.data(), this->_buf.size()) <= 0) {
+      std::cerr << "Could not decrypt buffer" << std::endl;
+      delete [] out_tmp_buf;
+      EVP_PKEY_CTX_free(ctx);
+      return false;
+    }
+	memcpy(this->_key, out_tmp_buf, 32);
+	memcpy(this->_iv, &out_tmp_buf[32], 16);
+    std::cerr << "Received key" << std::endl;
+    for (int i = 0; i < 32; ++i) {
+      std::cerr << std::setw(2) << std::setfill('0') << std::hex << (int)this->_key[i];
+    }
+    std::cerr << std::endl << "Received iv" << std::endl;
+    for (int i = 0; i < 16; ++i) {
+      std::cerr << std::setw(2) << std::setfill('0') << std::hex << (int)this->_iv[i];
+    }
+	std::cerr << std::dec << std::endl;
+    delete [] out_tmp_buf;
+    EVP_PKEY_CTX_free(ctx);
+	std::cerr << "Succesfully received AES key" << std::endl;
+	this->_handshake = true;
+	return true;
 }
