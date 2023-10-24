@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/24 19:40:01 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/24 19:42:43 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -374,6 +374,7 @@ int Client::run(void) {
                 epoll_ctl(_epollfd, EPOLL_CTL_DEL, _sockfd, &_event);
                 return 0;
             }
+            std::cerr << "Written: " << _buf << std::endl;
         }
         hasevent = epoll_wait(_epollfd, &_event, 1, 1000*60*2);
         if (hasevent > 0) {
