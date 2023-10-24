@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/24 19:42:43 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/24 19:45:12 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -531,7 +531,7 @@ bool    Client::decryptAESKey(void) {
 }
 
 bool    Client::encrypt(void) {
-    int outlen;
+    int outlen, tmplen;
     size_t gcm_ivlen = 16;
     unsigned char outbuf[PIPE_BUF + 128]; //maximum allowed size if PIPE_BUF and up to 128 bytes might be added during encryption (block size)
     unsigned char outtag[16];
@@ -565,11 +565,11 @@ bool    Client::encrypt(void) {
 
     std::cerr << "Size after first encryption: " << outlen << std::endl;
     /* Finalise: note get no output for GCM */
-    if (!EVP_EncryptFinal_ex(_ctx, outbuf, &outlen)) {
+    if (!EVP_EncryptFinal_ex(_ctx, outbuf, &tmplen)) {
         std::cerr << "Could not finalize encryption" << std::endl;
         return false;
     }
-    std::cerr << "Size after final encryption: " << outlen << std::endl;
+    std::cerr << "Size after final encryption: " << tmplen << std::endl;
 
     /* Get tag */
     params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, outtag, 16);
