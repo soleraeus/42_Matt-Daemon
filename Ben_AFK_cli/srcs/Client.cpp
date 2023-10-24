@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/24 21:34:22 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/24 21:53:57 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -462,6 +462,7 @@ int Client::run(void) {
             else {
                 if (!this->encrypt())
                     return 1;
+                this->increaseIV();
                 std::string header = "Length ";
                 header += std::to_string(this->_buf.size());
                 header += "\n";
@@ -669,4 +670,12 @@ bool    Client::decrypt(void) {
     }
     std::cerr << "Tag verified" << std::endl;
     return true;
+}
+
+void    Client::increaseIV(void) {
+    for (int i = 15; i >= 0; --i) {
+        this->_iv[i] += 1;
+        if (this->_iv[i] != 0)
+            break ;
+    }
 }

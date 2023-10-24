@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:50:15 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/24 20:08:04 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/24 21:56:29 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,6 +69,7 @@ class Client {
         bool                decryptAESKey(void);
         bool                encrypt(void);
         bool                decrypt(void);
+        void                increaseIV(void);
 };
 
 #endif
