@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/24 20:26:20 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/24 21:34:22 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -462,6 +462,10 @@ int Client::run(void) {
             else {
                 if (!this->encrypt())
                     return 1;
+                std::string header = "Length ";
+                header += std::to_string(this->_buf.size());
+                header += "\n";
+                this->_buf.insert(this->_buf.begin(), header.begin(), header.end());
                 ret = send(_sockfd, _buf.data(), _buf.size(), MSG_DONTWAIT);
                 if (ret <= 0) {
                     std::cerr << "Could not send packet to server, Matt_daemon is most probably disconnected" << std::endl;
