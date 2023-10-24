@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/24 19:30:59 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/24 19:40:01 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -345,10 +345,10 @@ bool    Client::getPacketSize(void)
 
 
 int Client::run(void) {
-    std::string buf;
     int         hasevent = 0;
     ssize_t     ret = 0;
 
+    this->_buf.clear();
     this->_packetsize = 0;
     if (connect(_sockfd, (struct sockaddr*)&_sockaddr, sizeof(_sockaddr)) == -1) {
         std::cerr << "Could not connect to server" << std::endl;
@@ -367,8 +367,8 @@ int Client::run(void) {
         return 1;
     }
     while (true) {
-        if (!(_secure && !_handshake) && buf.empty()) {
-            std::getline(std::cin, buf);
+        if (!(_secure && !_handshake) && _buf.empty()) {
+            std::getline(std::cin, _buf);
             if (std::cin.eof()) {
                 std::cout << "Goodbye" << std::endl;
                 epoll_ctl(_epollfd, EPOLL_CTL_DEL, _sockfd, &_event);
@@ -383,26 +383,26 @@ int Client::run(void) {
             }
             if (_secure && !_handshake) {
                 if (_event.events & EPOLLOUT) {
-                    if (buf.empty()) {
-                        buf = "Length " + std::to_string(_pubkey_len);
-                        buf += "\n";
-                        buf.insert(buf.end(), _pubkey, _pubkey + _pubkey_len);
-                        ret = send(_sockfd, buf.data(), buf.size(), MSG_DONTWAIT);
+                    if (_buf.empty()) {
+                        _buf = "Length " + std::to_string(_pubkey_len);
+                        _buf += "\n";
+                        _buf.insert(_buf.end(), _pubkey, _pubkey + _pubkey_len);
+                        ret = send(_sockfd, _buf.data(), _buf.size(), MSG_DONTWAIT);
                         if (ret <= 0) {
                             std::cerr << "Could not send packet to server" << std::endl;
                             return 1;
                         }
-                        buf.erase(buf.begin(), buf.begin() + ret);
+                        _buf.erase(_buf.begin(), _buf.begin() + ret);
                     }
                     else {
-                        ret = send(_sockfd, buf.data(), buf.size(), MSG_DONTWAIT);
+                        ret = send(_sockfd, _buf.data(), _buf.size(), MSG_DONTWAIT);
                         if (ret <= 0) {
                             std::cerr << "Could not send packet to server" << std::endl;
                             return 1;
                         }
-                        buf.erase(buf.begin(), buf.begin() + ret);
+                        _buf.erase(_buf.begin(), _buf.begin() + ret);
                     }
-                    if (buf.empty()) {
+                    if (_buf.empty()) {
                         memset(&_event, 0, sizeof(_event));
                         _event.data.fd = _sockfd;
                         _event.events = EPOLLIN;
@@ -449,13 +449,13 @@ int Client::run(void) {
                 }
             }
             else if (!_secure) {
-                buf += "\n";
-                ret = send(_sockfd, buf.data(), buf.size(), MSG_DONTWAIT);
+                _buf += "\n";
+                ret = send(_sockfd, _buf.data(), _buf.size(), MSG_DONTWAIT);
                 if (ret <= 0) {
                     std::cerr << "Could not send packet to server" << std::endl;
                     return 1;
                 }
-                buf.erase(buf.begin(), buf.begin() + ret);
+                _buf.erase(_buf.begin(), _buf.begin() + ret);
             }
             else {
                 if (!this->encrypt())
