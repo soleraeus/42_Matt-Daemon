@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/12 19:47:53 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/24 23:22:41 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,7 +77,7 @@ int	main(int ac, char **av)
 		std::cerr << "Matt_daemon requires to be started as root" << std::endl;
 		return (1);
 	}
-	while ((opt = getopt(ac, av, "hcx")) != -1)
+	while ((opt = getopt(ac, av, "hsx")) != -1)
 	{
 		switch (opt) {
 			case 'h':
@@ -86,15 +86,15 @@ int	main(int ac, char **av)
 				std::cout << " Options allow you to start a more secure server on port 4343 using aes256 for encrypted communication" << std::endl;
 				std::cout << "Valid options: " << std::endl;
 				std::cout << "  -h: Display this help page" << std::endl;
-				std::cout << "  -c: Start a secure server on port 4343 which relies on aes256 encryption" << std::endl;
+				std::cout << "  -s: Start a secure server on port 4343 which relies on aes256 encryption" << std::endl;
 				std::cout << "  -x: Start the secure server only and do not start the standard one on port 4242.";
-				std::cout << " This option is not compatible with -c." << std::endl;
+				std::cout << " This option is not compatible with -s." << std::endl;
 				return (0);
 				break ;
-			case 'c':
+			case 's':
 				if (secure_only)
 				{
-					std::cerr << "Cannot combine option -c with option -x. For more information display help with " << av[0] << " -h" << std::endl;
+					std::cerr << "Cannot combine option -s with option -x. For more information display help with " << av[0] << " -h" << std::endl;
 				   return (1);	
 				}
 				secure = true;
@@ -102,7 +102,7 @@ int	main(int ac, char **av)
 			case 'x':
 				if (secure)
 				{
-					std::cerr << "Cannot combine option -c with option -x. For more information display help with " << av[0] << " -h" << std::endl;
+					std::cerr << "Cannot combine option -s with option -x. For more information display help with " << av[0] << " -h" << std::endl;
 					return (1);
 				}
 				secure_only = true;
