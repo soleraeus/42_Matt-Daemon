@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/24 19:45:12 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/24 20:10:40 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -349,6 +349,7 @@ int Client::run(void) {
     ssize_t     ret = 0;
 
     this->_buf.clear();
+    this->_inbuf.clear();
     this->_packetsize = 0;
     if (connect(_sockfd, (struct sockaddr*)&_sockaddr, sizeof(_sockaddr)) == -1) {
         std::cerr << "Could not connect to server" << std::endl;
@@ -461,6 +462,9 @@ int Client::run(void) {
             else {
                 if (!this->encrypt())
                     return 1;
+                this->_inbuf = this->_buf;
+                if (!this->decrypt())
+                    return 1;
                 return 0;
             }
         }
@@ -533,7 +537,7 @@ bool    Client::decryptAESKey(void) {
 bool    Client::encrypt(void) {
     int outlen, tmplen;
     size_t gcm_ivlen = 16;
-    unsigned char outbuf[PIPE_BUF + 128]; //maximum allowed size if PIPE_BUF and up to 128 bytes might be added during encryption (block size)
+    unsigned char outbuf[PIPE_BUF + 128 + 1]; //maximum allowed size if PIPE_BUF and up to 128 bytes might be added during encryption (block size)
     unsigned char outtag[16];
     OSSL_PARAM params[2] = {OSSL_PARAM_END, OSSL_PARAM_END};
 
@@ -585,5 +589,78 @@ bool    Client::encrypt(void) {
     std::cerr << "Encrypted:" << std::endl;;
     BIO_dump_fp(stderr, _buf.data(), static_cast<int>(_buf.size()));
     std::cerr << std::endl;
+    _buf.insert(_buf.end(), outtag, outtag + 16);
+    return true;
+}
+
+bool    Client::decrypt(void) {
+    std::string tag;
+    int outlen, rv;
+    size_t gcm_ivlen = 16;
+    unsigned char outbuf[PIPE_BUF + 128 + 16 + 1];
+    OSSL_PARAM params[2] = {
+        OSSL_PARAM_END, OSSL_PARAM_END
+    };
+
+    printf("AES GCM Decrypt:\n");
+    printf("Ciphertext:\n");
+    BIO_dump_fp(stderr, _inbuf.data(), static_cast<int>(_inbuf.size()));
+
+    if (_inbuf.size() < 16) {
+        std::cerr << "Tag not provided correctly" << std::endl;
+        return false;
+    }
+    tag.assign(_inbuf.end() - 16, _inbuf.end());
+    std::cerr << "tag:" << std::endl;
+    BIO_dump_fp(stderr, tag.data(), static_cast<int>(tag.size()));
+    _inbuf.erase(_inbuf.end() - 16);
+    std::cerr << "New buf:" << std::endl;
+    BIO_dump_fp(stderr, _inbuf.data(), static_cast<int>(_inbuf.size()));
+
+    params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
+
+    /*
+     * Initialise an encrypt operation with the cipher/mode, key, IV and
+     * IV length parameter.
+     */
+    if (!EVP_DecryptInit_ex2(_ctx, _cipher, _key, _iv, params)) {
+        std::cerr << "Could not init decryption" << std::endl;
+        return false;
+    }
+
+    /* Decrypt plaintext */
+    if (!EVP_DecryptUpdate(_ctx, outbuf, &outlen, reinterpret_cast<unsigned char*>(_inbuf.data()), static_cast<int>(_inbuf.size()))) {
+        std::cerr << "Could not decrypt string" << std::endl;
+        return false;
+    }
+
+    /* Output decrypted block */
+    printf("Plaintext:\n");
+    BIO_dump_fp(stdout, outbuf, outlen);
+
+    /* Set expected tag value. */
+    params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, (void*)tag.data(), 16);
+
+    if (!EVP_CIPHER_CTX_set_params(_ctx, params)) {
+        std::cerr << "Could not get params" << std::endl;
+        return false;
+    }
+
+    std::cerr << "Current length" << outlen << std::endl;
+
+    /* Finalise: note get no output for GCM */
+    rv = EVP_DecryptFinal_ex(_ctx, outbuf, &outlen);
+
+    std::cerr << "Length after final encrypt" << outlen << std::endl;
+
+    /*
+     * Print out return value. If this is not successful authentication
+     * failed and plaintext is not trustworthy.
+     */
+    if (rv <= 0) {
+        std::cerr << "Incorrect tag provided, data might have been corrupted" << std::endl;
+        return false;
+    }
+    std::cerr << "Tag verified" << std::endl;
     return true;
 }

@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:50:15 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/24 19:11:23 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/24 20:08:04 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,6 +56,7 @@ class Client {
         int                 _epollfd;
         struct epoll_event  _event;
         std::string         _buf;
+        std::string         _inbuf;
         size_t              _packetsize;
         unsigned char       _recv_buffer[PIPE_BUF + 14];
         ssize_t             _recv_len;
@@ -67,6 +68,7 @@ class Client {
         bool                getPacketSize(void);
         bool                decryptAESKey(void);
         bool                encrypt(void);
+        bool                decrypt(void);
 };
 
 #endif
