@@ -6,37 +6,59 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/23 21:43:36 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/24 21:25:35 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
 
-Client::Client(void): _fd(0), _packetsize(0), _secure(false), _handshake(false), _key(NULL){}
-Client::Client(int fd, bool secure, unsigned char* key): _fd(fd), _packetsize(0), _secure(secure), _handshake(false), _key(key){
+Client::Client(void): _fd(0), _packetsize(0), _secure(false), _handshake(false), _key(nullptr), _ctx(nullptr), _cipher(nullptr) {}
+Client::Client(int fd, bool secure, unsigned char* key): _fd(fd), _packetsize(0), _secure(secure), _handshake(false), _key(key), _ctx(nullptr), _cipher(nullptr) {
 	if (secure)
 	{
 		if (!RAND_bytes(this->_iv, 16))
 		{
 			throw std::system_error(std::error_code(), "Could not generate iv");
 		}
+        if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
+            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
+        }
+        if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
+            EVP_CIPHER_CTX_free(_ctx);
+            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
+        }
 	}	
 }
 
 Client::Client(const Client & src): _fd(dup(src._fd)), _packetsize(src._packetsize), _secure(src._secure), _handshake(src._handshake), _key(src._key), _buffer(src._buffer), _encrypted_buffer(src._encrypted_buffer) {
 	memcpy(this->_iv, src._iv, 16);
 	memcpy(this->_RSA_buf, src._RSA_buf, 1024);
+    if (src._secure) {
+        if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
+            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
+        }
+        if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
+            EVP_CIPHER_CTX_free(_ctx);
+            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
+        }
+    }
 }
-Client::Client(Client && src): _fd(std::move(src._fd)), _packetsize(src._packetsize), _secure(src._secure), _handshake(src._handshake), _key(src._key), _buffer(std::move(src._buffer)), _encrypted_buffer(std::move(src._encrypted_buffer)) {
+Client::Client(Client && src): _fd(std::move(src._fd)), _packetsize(src._packetsize), _secure(src._secure), _handshake(src._handshake), _key(src._key), _buffer(std::move(src._buffer)), _encrypted_buffer(std::move(src._encrypted_buffer)), _ctx(src._ctx), _cipher(src._cipher) {
 	memcpy(this->_iv, src._iv, 16);
 	memcpy(this->_RSA_buf, src._RSA_buf, 1024);
 	src._fd = 0;
-	src._key = NULL;
+	src._key = nullptr;
+    src._ctx = nullptr;
+    src._cipher = nullptr;
 }
 
 Client::~Client(void) {
 	if (this->_fd > 0)
 		close(this->_fd);
+    if (this->_ctx)
+        EVP_CIPHER_CTX_free(this->_ctx);
+    if (this->_cipher)
+        EVP_CIPHER_free(_cipher);
 }
 
 Client & Client::operator=(const Client & rhs)
@@ -52,6 +74,15 @@ Client & Client::operator=(const Client & rhs)
 	this->_key = rhs._key;
 	memcpy(this->_iv, rhs._iv, 16);
 	memcpy(this->_RSA_buf, rhs._RSA_buf, 1024);
+    if (rhs._secure) {
+        if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
+            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
+        }
+        if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
+            EVP_CIPHER_CTX_free(_ctx);
+            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
+        }
+    }
 	return (*this);
 }
 
@@ -67,9 +98,13 @@ Client & Client::operator=(Client && rhs)
 	this->_buffer = std::move(rhs._buffer);
 	this->_encrypted_buffer = std::move(rhs._encrypted_buffer);
 	this->_key = rhs._key;
-	rhs._key = NULL;
+	rhs._key = nullptr;
 	memcpy(this->_iv, rhs._iv, 16);
 	memcpy(this->_RSA_buf, rhs._RSA_buf, 1024);
+    this->_ctx = rhs._ctx;
+    rhs._ctx = nullptr;
+    this->_cipher = rhs._cipher;
+    rhs._cipher = nullptr;
 	return (*this);
 }
 
@@ -98,7 +133,7 @@ Client::Return	Client::getPacketSize(void)
 					return Client::Return::KICK;
 			}
 			this->_packetsize = std::atoi(&this->_encrypted_buffer[7]);
-			if (this->_packetsize > PIPE_BUF)
+			if (this->_packetsize > PIPE_BUF + 128 + 16)
 				return Client::Return::KICK;
 			this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + i + 1);
 			return Client::Return::OK;
@@ -128,6 +163,8 @@ Client::Return	Client::flush(std::shared_ptr<Tintin_reporter>& reporter)
 	}
 	while ((pos = this->_buffer.find('\n')) != std::string::npos)
 	{
+        if (pos > PIPE_BUF)
+            return Client::Return::KICK;
 		sub = this->_buffer.substr(0, pos);
 		if (sub == "quit")
 			return Client::Return::QUIT;
@@ -163,9 +200,8 @@ Client::Return	Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
 				this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
 				return (this->sendKey());
 			}
-			std::cerr << "It would be time to decrypt" << std::endl;
-			this->_buffer.insert(this->_buffer.end(), this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
-			this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
+            if (!this->decrypt())
+                return Client::Return::KICK;
 			if ((ret = this->getPacketSize()) != Client::Return::OK)
 				return ret;
 		}
@@ -185,14 +221,14 @@ Client::Return	Client::sendKey(void) {
 
 	this->_packetsize = 0;
 	//Using the BIO to create an EVP_KEY
-	EVP_PKEY* RSA_key = NULL;
-	RSA_key	= PEM_read_bio_PUBKEY(pubKey, &RSA_key, NULL, NULL);
+	EVP_PKEY* RSA_key = nullptr;
+	RSA_key	= PEM_read_bio_PUBKEY(pubKey, &RSA_key, nullptr, nullptr);
 	if (!RSA_key) {
 		std::cerr << "Could not create RSA key" << std::endl;
 		BIO_free(pubKey);
 		return Client::Return::KICK;
 	}
-    EVP_PKEY_CTX*   ctx = EVP_PKEY_CTX_new(RSA_key, NULL);
+    EVP_PKEY_CTX*   ctx = EVP_PKEY_CTX_new(RSA_key, nullptr);
     if (!ctx) {
       std::cerr << "Could not create context" << std::endl;
       BIO_free(pubKey);
@@ -224,7 +260,7 @@ Client::Return	Client::sendKey(void) {
       return Client::Return::KICK;
     }
     std::cerr << "Payload is " << outlen << " bytes" << std::endl;
-    unsigned char* out_tmp_buf = NULL; 
+    unsigned char* out_tmp_buf = nullptr; 
     try {
       out_tmp_buf = new unsigned char[outlen];
     }
@@ -284,4 +320,73 @@ Client::Return    Client::send(void) {
    std::cerr << "Sent " << ret << std::endl;
    this->_send_buffer.erase(0, ret);
    return Client::Return::SEND;
+}
+
+bool    Client::decrypt(void) {
+    std::string tag;
+    int outlen, rv;
+    size_t gcm_ivlen = 16;
+    unsigned char outbuf[PIPE_BUF + 128 + 16 + 1];
+    OSSL_PARAM params[2] = {
+        OSSL_PARAM_END, OSSL_PARAM_END
+    };
+
+    printf("AES GCM Decrypt:\n");
+
+    //Get tag
+    if (this->_packetsize < 16) {
+        return false;
+    }
+    tag.assign(this->_encrypted_buffer.begin() + this->_packetsize - 16, this->_encrypted_buffer.begin() + this->_packetsize);
+    std::cerr << "tag:" << std::endl;
+    BIO_dump_fp(stderr, tag.data(), static_cast<int>(tag.size()));
+
+    //Put data to decrypt in buffer
+    std::cerr << "Received:" << std::endl;
+    BIO_dump_fp(stderr, this->_encrypted_buffer.data(), this->_packetsize - 16);
+
+    params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
+
+    /*
+     * Initialise an encrypt operation with the cipher/mode, key, IV and
+     * IV length parameter.
+     */
+    if (!EVP_DecryptInit_ex2(_ctx, _cipher, _key, _iv, params)) {
+        std::cerr << "Could not init decryption" << std::endl;
+        return false;
+    }
+
+    /* Decrypt plaintext */
+    if (!EVP_DecryptUpdate(_ctx, outbuf, &outlen, reinterpret_cast<unsigned char*>(this->_encrypted_buffer.data()), this->_packetsize - 16)) {
+        std::cerr << "Could not decrypt string" << std::endl;
+        return false;
+    }
+
+    /* Output decrypted block */
+    printf("Plaintext:\n");
+    BIO_dump_fp(stdout, outbuf, outlen);
+
+    /* Set expected tag value. */
+    params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, (void*)tag.data(), 16);
+
+    if (!EVP_CIPHER_CTX_set_params(_ctx, params)) {
+        std::cerr << "Could not set params" << std::endl;
+        return false;
+    }
+
+    this->_buffer.insert(this->_buffer.end(), outbuf, outbuf + outlen);
+    this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
+    /* Finalise: note get no output for GCM */
+    rv = EVP_DecryptFinal_ex(_ctx, outbuf, &outlen);
+
+    /*
+     * Print out return value. If this is not successful authentication
+     * failed and plaintext is not trustworthy.
+     */
+    if (rv <= 0) {
+        std::cerr << "Incorrect tag provided, data might have been corrupted" << std::endl;
+        return false;
+    }
+    std::cerr << "Tag verified" << std::endl;
+    return true;
 }
