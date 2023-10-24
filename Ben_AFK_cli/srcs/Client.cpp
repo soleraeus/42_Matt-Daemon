@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/24 19:27:29 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/24 19:30:59 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -525,6 +525,7 @@ bool    Client::decryptAESKey(void) {
         EVP_PKEY_CTX_free(ctx);
     std::cerr << "Succesfully received AES key" << std::endl;
     this->_handshake = true;
+    this->_buf.clear();
     return true;
 }
 
@@ -582,5 +583,6 @@ bool    Client::encrypt(void) {
     _buf.assign(outbuf, outbuf + outlen);
     std::cerr << "Encrypted:" << std::endl;;
     BIO_dump_fp(stderr, _buf.data(), static_cast<int>(_buf.size()));
+    std::cerr << std::endl;
     return true;
 }
