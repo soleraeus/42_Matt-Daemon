@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/24 20:10:40 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/24 20:18:13 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -613,7 +613,7 @@ bool    Client::decrypt(void) {
     tag.assign(_inbuf.end() - 16, _inbuf.end());
     std::cerr << "tag:" << std::endl;
     BIO_dump_fp(stderr, tag.data(), static_cast<int>(tag.size()));
-    _inbuf.erase(_inbuf.end() - 16);
+    _inbuf.erase(_inbuf.end() - 16, _inbuf.end());
     std::cerr << "New buf:" << std::endl;
     BIO_dump_fp(stderr, _inbuf.data(), static_cast<int>(_inbuf.size()));
 
