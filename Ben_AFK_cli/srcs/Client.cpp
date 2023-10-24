@@ -328,7 +328,7 @@ bool    Client::getPacketSize(void)
                     return false;
             }
             this->_packetsize = std::atoi(&this->_buf[7]);
-            if (this->_packetsize > PIPE_BUF)
+            if (this->_packetsize > PIPE_BUF + 128 + 16 + 16)
                 return false;
             this->_buf.erase(this->_buf.begin(), this->_buf.begin() + i + 1);
             return true;
@@ -369,13 +369,13 @@ int Client::run(void) {
     }
     while (true) {
         if (!(_secure && !_handshake) && _buf.empty()) {
+            std::cout << "Ben_AFK > ";
             std::getline(std::cin, _buf);
             if (std::cin.eof()) {
                 std::cout << "Goodbye" << std::endl;
                 epoll_ctl(_epollfd, EPOLL_CTL_DEL, _sockfd, &_event);
                 return 0;
             }
-            std::cerr << "Written: " << _buf << std::endl;
         }
         hasevent = epoll_wait(_epollfd, &_event, 1, 1000*60*2);
         if (hasevent > 0) {
@@ -408,7 +408,6 @@ int Client::run(void) {
                         memset(&_event, 0, sizeof(_event));
                         _event.data.fd = _sockfd;
                         _event.events = EPOLLIN;
-                        std::cerr << "Waiting to receive symmetric key" << std::endl;
                         if (epoll_ctl(_epollfd, EPOLL_CTL_MOD, _sockfd, &_event) == -1) {
                             std::cerr << "Could not add socket to epoll" << std::endl;
                             return 1;
@@ -428,11 +427,6 @@ int Client::run(void) {
                     }
                     if (this->_packetsize) {
                         if (this->_buf.size() >= this->_packetsize) {
-                            std::cerr << "Received key from Server" << std::endl;
-                            for (size_t i = 0; i < this->_buf.size(); ++i) {
-                                std::cerr << std::setw(2) << std::setfill('0') << std::hex << (int)this->_buf[i];
-                            }
-                            std::cerr << std::endl;
                             if (!this->decryptAESKey())
                                 return 1;
                             memset(&_event, 0, sizeof(_event));
@@ -462,7 +456,6 @@ int Client::run(void) {
             else {
                 if (!this->encrypt())
                     return 1;
-                this->increaseIV();
                 std::string header = "Length ";
                 header += std::to_string(this->_buf.size());
                 header += "\n";
@@ -502,7 +495,6 @@ bool    Client::decryptAESKey(void) {
             EVP_PKEY_CTX_free(ctx);
             return false;
         }
-        std::cerr << "Payload is " << outlen << " bytes" << std::endl;
         unsigned char* out_tmp_buf = nullptr;
         try {
             out_tmp_buf = new unsigned char[outlen];
@@ -524,18 +516,8 @@ bool    Client::decryptAESKey(void) {
     }
     memcpy(this->_key, out_tmp_buf, 32);
     memcpy(this->_iv, &out_tmp_buf[32], 16);
-        std::cerr << "Received key" << std::endl;
-        for (int i = 0; i < 32; ++i) {
-            std::cerr << std::setw(2) << std::setfill('0') << std::hex << (int)this->_key[i];
-        }
-        std::cerr << std::endl << "Received iv" << std::endl;
-        for (int i = 0; i < 16; ++i) {
-            std::cerr << std::setw(2) << std::setfill('0') << std::hex << (int)this->_iv[i];
-        }
-    std::cerr << std::dec << std::endl;
-        delete [] out_tmp_buf;
-        EVP_PKEY_CTX_free(ctx);
-    std::cerr << "Succesfully received AES key" << std::endl;
+    delete [] out_tmp_buf;
+    EVP_PKEY_CTX_free(ctx);
     this->_handshake = true;
     this->_buf.clear();
     return true;
@@ -543,8 +525,9 @@ bool    Client::decryptAESKey(void) {
 
 bool    Client::encrypt(void) {
     int outlen, tmplen;
+    unsigned char   nextiv[16];
     size_t gcm_ivlen = 16;
-    unsigned char outbuf[PIPE_BUF + 128 + 1]; //maximum allowed size if PIPE_BUF and up to 128 bytes might be added during encryption (block size)
+    unsigned char outbuf[PIPE_BUF + 128 + 16]; //maximum allowed size if PIPE_BUF, up to 128 bytes might be added during encryption (block size) and we need to add new iv
     unsigned char outtag[16];
     OSSL_PARAM params[2] = {OSSL_PARAM_END, OSSL_PARAM_END};
 
@@ -553,7 +536,10 @@ bool    Client::encrypt(void) {
         std::cerr << "You cannot send more than " << PIPE_BUF << " bytes to Matt_daemon" << std::endl;
         return false;
     }
-    std::cerr << "AES GCM Encrypt:\nPlaintext:\n" << this->_buf << std::endl;
+    if (!RAND_bytes(nextiv, 16)) {
+        std::cerr << "Could not generate next iv" << std::endl;
+    }
+    this->_buf.insert(this->_buf.end(), nextiv, nextiv + 16);
     params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
 
     /*
@@ -570,17 +556,12 @@ bool    Client::encrypt(void) {
         std::cerr << "Could not encrypt buffer" << std::endl;
         return false;
     }
-    /* Output encrypted block */
-    printf("Ciphertext:\n");
-    BIO_dump_fp(stderr, outbuf, outlen);
 
-    std::cerr << "Size after first encryption: " << outlen << std::endl;
     /* Finalise: note get no output for GCM */
     if (!EVP_EncryptFinal_ex(_ctx, outbuf, &tmplen)) {
         std::cerr << "Could not finalize encryption" << std::endl;
         return false;
     }
-    std::cerr << "Size after final encryption: " << tmplen << std::endl;
 
     /* Get tag */
     params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, outtag, 16);
@@ -590,13 +571,10 @@ bool    Client::encrypt(void) {
     }
 
     /* Output tag */
-    std::cerr << "Tag:" << std::endl;;
-    BIO_dump_fp(stderr, outtag, 16);
     _buf.assign(outbuf, outbuf + outlen);
-    std::cerr << "Encrypted:" << std::endl;;
-    BIO_dump_fp(stderr, _buf.data(), static_cast<int>(_buf.size()));
-    std::cerr << std::endl;
     _buf.insert(_buf.end(), outtag, outtag + 16);
+    memcpy(this->_iv, nextiv, 16);
+    //EVP_CIPHER_CTX_reset(this->_ctx);
     return true;
 }
 
@@ -609,20 +587,12 @@ bool    Client::decrypt(void) {
         OSSL_PARAM_END, OSSL_PARAM_END
     };
 
-    printf("AES GCM Decrypt:\n");
-    printf("Ciphertext:\n");
-    BIO_dump_fp(stderr, _inbuf.data(), static_cast<int>(_inbuf.size()));
-
     if (_inbuf.size() < 16) {
         std::cerr << "Tag not provided correctly" << std::endl;
         return false;
     }
     tag.assign(_inbuf.end() - 16, _inbuf.end());
-    std::cerr << "tag:" << std::endl;
-    BIO_dump_fp(stderr, tag.data(), static_cast<int>(tag.size()));
     _inbuf.erase(_inbuf.end() - 16, _inbuf.end());
-    std::cerr << "New buf:" << std::endl;
-    BIO_dump_fp(stderr, _inbuf.data(), static_cast<int>(_inbuf.size()));
 
     params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
 
@@ -641,9 +611,6 @@ bool    Client::decrypt(void) {
         return false;
     }
 
-    /* Output decrypted block */
-    printf("Plaintext:\n");
-    BIO_dump_fp(stdout, outbuf, outlen);
 
     /* Set expected tag value. */
     params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, (void*)tag.data(), 16);
@@ -653,12 +620,10 @@ bool    Client::decrypt(void) {
         return false;
     }
 
-    std::cerr << "Current length" << outlen << std::endl;
 
     /* Finalise: note get no output for GCM */
     rv = EVP_DecryptFinal_ex(_ctx, outbuf, &outlen);
 
-    std::cerr << "Length after final encrypt" << outlen << std::endl;
 
     /*
      * Print out return value. If this is not successful authentication
@@ -668,7 +633,7 @@ bool    Client::decrypt(void) {
         std::cerr << "Incorrect tag provided, data might have been corrupted" << std::endl;
         return false;
     }
-    std::cerr << "Tag verified" << std::endl;
+    //EVP_CIPHER_CTX_reset(this->_ctx);
     return true;
 }
 
@@ -676,6 +641,6 @@ void    Client::increaseIV(void) {
     for (int i = 15; i >= 0; --i) {
         this->_iv[i] += 1;
         if (this->_iv[i] != 0)
-            break ;
+            break;
     }
 }

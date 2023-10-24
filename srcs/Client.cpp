@@ -202,7 +202,7 @@ Client::Return  Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
             }
             if (!this->decrypt())
                 return Client::Return::KICK;
-            this->increaseIV();
+           // this->increaseIV();
             if ((ret = this->getPacketSize()) != Client::Return::OK)
                 return ret;
         }
@@ -225,13 +225,11 @@ Client::Return  Client::sendKey(void) {
     EVP_PKEY* RSA_key = nullptr;
     RSA_key = PEM_read_bio_PUBKEY(pubKey, &RSA_key, nullptr, nullptr);
     if (!RSA_key) {
-        std::cerr << "Could not create RSA key" << std::endl;
         BIO_free(pubKey);
         return Client::Return::KICK;
     }
     EVP_PKEY_CTX*   ctx = EVP_PKEY_CTX_new(RSA_key, nullptr);
     if (!ctx) {
-      std::cerr << "Could not create context" << std::endl;
       BIO_free(pubKey);
       EVP_PKEY_free(RSA_key);
       return Client::Return::KICK;
@@ -240,40 +238,34 @@ Client::Return  Client::sendKey(void) {
       EVP_PKEY_CTX_free(ctx);
       EVP_PKEY_free(RSA_key);
       BIO_free(pubKey);
-      std::cerr << "Could not init encryption" <<std::endl;
       return Client::Return::KICK;
     }
     if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
       EVP_PKEY_CTX_free(ctx);
       EVP_PKEY_free(RSA_key);
       BIO_free(pubKey);
-      std::cerr << "Could not set padding" <<std::endl;
       return Client::Return::KICK;
     }
     std::string out;
     out.assign(this->_key, this->_key + 32);
     out.insert(out.end(), this->_iv, this->_iv + 16);
     if (EVP_PKEY_encrypt(ctx, nullptr, &outlen, (const unsigned char*) out.data(), out.size()) <= 0) {
-      std::cerr << "Could not get length of encrypted result" << std::endl;
       EVP_PKEY_CTX_free(ctx);
       EVP_PKEY_free(RSA_key);
       BIO_free(pubKey);
       return Client::Return::KICK;
     }
-    std::cerr << "Payload is " << outlen << " bytes" << std::endl;
     unsigned char* out_tmp_buf = nullptr; 
     try {
       out_tmp_buf = new unsigned char[outlen];
     }
     catch (std::exception const & e) {
-      std::cerr << "Allocation error" << std::endl;
       EVP_PKEY_CTX_free(ctx);
       EVP_PKEY_free(RSA_key);
       BIO_free(pubKey);
       return Client::Return::KICK;
     }
     if (EVP_PKEY_encrypt(ctx, out_tmp_buf, &outlen, (const unsigned char*) out.data(), out.size()) <= 0) {
-      std::cerr << "Could encrypt buffer" << std::endl;
       delete [] out_tmp_buf;
       EVP_PKEY_CTX_free(ctx);
       EVP_PKEY_free(RSA_key);
@@ -283,42 +275,24 @@ Client::Return  Client::sendKey(void) {
     this->_send_buffer = "Length ";
     this->_send_buffer += std::to_string(outlen);
     this->_send_buffer += "\n";
-    std::cerr << "Length: " << outlen << std::endl;
     this->_send_buffer.insert(this->_send_buffer.end(), out_tmp_buf, out_tmp_buf + outlen);
-    std::cerr << "Original key" << std::endl;
-    for (int i = 0; i < 32; ++i) {
-      std::cerr << std::setw(2) << std::setfill('0') << std::hex << (int)this->_key[i];
-    }
-    std::cerr << std::endl << "Original iv" << std::endl;
-    for (int i = 0; i < 16; ++i) {
-      std::cerr << std::setw(2) << std::setfill('0') << std::hex << (int)this->_iv[i];
-    }
-    std::cerr << std::endl << "Encrypted" << std::endl;
-    for (size_t i = this->_send_buffer.find('\n') + 1; i < this->_send_buffer.size(); ++i) {
-      std::cerr << std::setw(2) << std::setfill('0') << std::hex << (int)this->_send_buffer[i];
-    }
-    std::cerr << std::endl << std::dec << "Final length: " << this->_send_buffer.size() << std::endl;
     delete [] out_tmp_buf;
     EVP_PKEY_CTX_free(ctx);
     EVP_PKEY_free(RSA_key);
     BIO_free(pubKey);
-    std::cerr << "Succesfully loaded public key received" << std::endl;
     this->_handshake = true;
     return Client::Return::SEND;
 }
 
 Client::Return    Client::send(void) {
-    std::cerr << "Sending key" << std::endl;
     size_t ret = ::send(this->_fd, (void*) this->_send_buffer.data(), this->_send_buffer.size(), MSG_DONTWAIT);
    if (ret <= 0) {
-       std::cerr << "Could not send key to client" << std::endl;
        return Client::Return::KICK;
    }
    if (ret == this->_send_buffer.size()) {
        this->_send_buffer.clear();
        return Client::Return::OK;
    }
-   std::cerr << "Sent " << ret << std::endl;
    this->_send_buffer.erase(0, ret);
    return Client::Return::SEND;
 }
@@ -332,19 +306,13 @@ bool    Client::decrypt(void) {
         OSSL_PARAM_END, OSSL_PARAM_END
     };
 
-    printf("AES GCM Decrypt:\n");
-
     //Get tag
     if (this->_packetsize < 16) {
         return false;
     }
     tag.assign(this->_encrypted_buffer.begin() + this->_packetsize - 16, this->_encrypted_buffer.begin() + this->_packetsize);
-    std::cerr << "tag:" << std::endl;
-    BIO_dump_fp(stderr, tag.data(), static_cast<int>(tag.size()));
 
     //Put data to decrypt in buffer
-    std::cerr << "Received:" << std::endl;
-    BIO_dump_fp(stderr, this->_encrypted_buffer.data(), this->_packetsize - 16);
 
     params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
 
@@ -353,29 +321,26 @@ bool    Client::decrypt(void) {
      * IV length parameter.
      */
     if (!EVP_DecryptInit_ex2(_ctx, _cipher, _key, _iv, params)) {
-        std::cerr << "Could not init decryption" << std::endl;
         return false;
     }
 
     /* Decrypt plaintext */
     if (!EVP_DecryptUpdate(_ctx, outbuf, &outlen, reinterpret_cast<unsigned char*>(this->_encrypted_buffer.data()), this->_packetsize - 16)) {
-        std::cerr << "Could not decrypt string" << std::endl;
         return false;
     }
-
-    /* Output decrypted block */
-    printf("Plaintext:\n");
-    BIO_dump_fp(stdout, outbuf, outlen);
 
     /* Set expected tag value. */
     params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, (void*)tag.data(), 16);
 
     if (!EVP_CIPHER_CTX_set_params(_ctx, params)) {
-        std::cerr << "Could not set params" << std::endl;
         return false;
     }
 
-    this->_buffer.insert(this->_buffer.end(), outbuf, outbuf + outlen);
+    if (outlen < 16) {
+        return false;
+    }
+    memcpy(this->_iv, outbuf + outlen - 16, 16);
+    this->_buffer.insert(this->_buffer.end(), outbuf, outbuf + outlen - 16);
     this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
     /* Finalise: note get no output for GCM */
     rv = EVP_DecryptFinal_ex(_ctx, outbuf, &outlen);
@@ -385,10 +350,9 @@ bool    Client::decrypt(void) {
      * failed and plaintext is not trustworthy.
      */
     if (rv <= 0) {
-        std::cerr << "Incorrect tag provided, data might have been corrupted" << std::endl;
         return false;
     }
-    std::cerr << "Tag verified" << std::endl;
+    //EVP_CIPHER_CTX_reset(this->_ctx);
     return true;
 }
 
@@ -396,6 +360,6 @@ void    Client::increaseIV(void) {
     for (int i = 15; i >= 0; --i) {
         this->_iv[i] += 1;
         if (this->_iv[i] != 0)
-            break ;
+            break;
     }
 }

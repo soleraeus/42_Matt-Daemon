@@ -28,6 +28,7 @@
 # include <openssl/core_names.h>
 # include <openssl/evp.h>
 # include <openssl/pem.h>
+# include <openssl/rand.h>
 # include <openssl/rsa.h>
 
 class Client {
