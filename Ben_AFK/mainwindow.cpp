@@ -9,6 +9,7 @@ MainWindow::MainWindow(QWidget *parent)
     socket = NULL;
     isSecure = false;
     isLogged = false;
+	secured_client = NULL;
     ui->textLog->setPlaceholderText("<LOG>");
     ui->lineChat->setPlaceholderText("write here");
 
@@ -60,11 +61,103 @@ void MainWindow::changeTab(int index) {
     }
 }
 
+enum HandshakeState {
+	SendRSA,
+	WaitAES,
+	Done,
+};
+
+char *getPacketSize(std::string buf)
+{
+    size_t		pos = 0;
+
+    size_t		packetsize = 0;
+    for (size_t i = 0; i < buf.size(); ++i)
+    {
+        if (buf[i] == '\n')
+        {
+            if (i < 8 || i > 12)
+                return NULL;
+            if (memcmp((void *)"Length ",(void *)&buf[0], 7))
+                return NULL;
+            pos = i;
+            if (buf[i - 1] == '\r')
+                pos = i - 1;
+            if (pos == 7)
+                return NULL;
+            buf[pos] = '\0';
+            for (size_t j = 7; j < pos; ++j)
+            {
+                if (buf[j] < '0' || buf[j] > '9')
+                    return NULL;
+            }
+            packetsize = 0;//std::atoi(buf[7]);
+            if (packetsize > PIPE_BUF + 128 + 16 + 16)
+                return NULL;
+            buf.erase(buf.begin(), buf.begin() + i + 1);
+            return NULL;
+        }
+        if ((buf[i] < ' ' || buf[i] > 'z')
+                        && buf[i] != '\r') {
+            return NULL;
+        }
+    }
+    if (buf.size() > 12)
+        return NULL;
+    return buf.data();
+}
+
+void MainWindow::Handshake(void) {
+	static int status = HandshakeState::SendRSA;
+
+	switch (status) { 
+		case SendRSA :
+			qDebug() << "Sending pubkey";
+			socket->write(secured_client->encryptRSAKey().data());
+			status = WaitAES;
+			break ;
+		
+		case WaitAES : 
+			qDebug() << "Waiting for AES";
+			if (socket->waitForReadyRead(1000)) {
+				qDebug() << "Got a response from server";
+				char *buf = socket->readAll().data();
+				buf += 11;
+				qDebug() << "--------------";
+				qDebug() << buf;
+				qDebug() << "--------------";
+				std::string tmp;
+				tmp.assign(buf, 512);
+				if (secured_client->decryptAESKey(tmp)) {
+					qDebug() << "Decrypted AES Key !";
+					status = Done;
+				} else {
+					qDebug() << "Failed to decrypt AES Key ...";
+					ui->stackedWidget->setCurrentIndex(PageIndex::Choice);
+					return ;
+				}
+			} else {
+				qDebug() << "Timed out ...";
+				ui->stackedWidget->setCurrentIndex(PageIndex::Choice);
+				return ;
+			}
+			break ;
+	}
+
+	if (status != Done) {
+		QMetaObject::invokeMethod(this, "Handshake");
+	} else {
+        ui->stackedWidget->setCurrentIndex(PageIndex::Chat);
+	}
+}
+
 void MainWindow::onConnect() {
     qDebug() << "socket is connected !";
     connect(socket, &QTcpSocket::disconnected, this, &MainWindow::onDisconnect);
     if (isSecure) {
-        ui->stackedWidget->setCurrentIndex(PageIndex::Chat);
+		secured_client = new SecuredClient();
+		qDebug() << "Starting Handshake";
+		this->Handshake();
         // Do the thing to secure the connection
     } else {
         ui->stackedWidget->setCurrentIndex(PageIndex::Chat);
@@ -99,6 +192,12 @@ void MainWindow::timeout() {
 
 void MainWindow::sendLine() {
     if (isSecure) {
+		qDebug() << "In secure mode";
+		std::string msg = (ui->lineChat->text().toUtf8() + "\n").data();
+		qDebug() << "Will encrypt msg";
+		msg = secured_client->encrypt(msg);
+		qDebug() << "Will send encrypted msg";
+		socket->write(msg.data(), msg.size());
         // Encrypt the message
     } else {
         socket->write(ui->lineChat->text().toUtf8() + "\n");

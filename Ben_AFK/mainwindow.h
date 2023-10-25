@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "secured_client.hpp"
 #include <QMainWindow>
 #include <QTcpSocket>
 #include <QTimer>
@@ -25,6 +26,7 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     void createSocket();
+	Q_INVOKABLE void Handshake(void);
 
 private slots:
     void standard();
@@ -41,5 +43,6 @@ private:
     bool            isSecure;
     bool            isLogged;
     QTcpSocket      *socket;
+	SecuredClient	*secured_client;
 };
 #endif // MAINWINDOW_H
