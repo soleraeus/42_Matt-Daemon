@@ -3,7 +3,7 @@
 ######################################################################
 
 TEMPLATE = app
-TARGET = client
+TARGET = Ben_AFK
 INCLUDEPATH += .
 LIBS += ../libs/openssl-3.0.11/libcrypto.a
 

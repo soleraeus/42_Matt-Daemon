@@ -9,6 +9,7 @@ Matt_daemon
 Ben_AFK_cli
 !Ben_AFK_cli/
 log
-
-
+Ben_AFK
+!Ben_AFK/
+moc_*
 openssl-3.0.11/
