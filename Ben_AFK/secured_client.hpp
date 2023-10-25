@@ -30,6 +30,10 @@ class	SecuredClient {
 		SecuredClient& operator=(const SecuredClient& rhs);
 		SecuredClient& operator=(SecuredClient&& rhs);
 
+		std::string	encrypt(std::string buf);
+		bool		decryptAESKey(std::string buf);
+		std::string	encryptRSAKey(void);
+
 	private:
 		EVP_PKEY		*_RSA_key;
 		BIO				*_mem;
