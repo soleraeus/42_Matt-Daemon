@@ -6,5 +6,9 @@ vscode/
 *.d
 *.a
 Matt_daemon
+Ben_AFK_cli
+!Ben_AFK_cli/
 log
 
+
+openssl-3.0.11/

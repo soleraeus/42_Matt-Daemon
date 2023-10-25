@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:33:42 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/06 20:22:40 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/23 21:28:44 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,10 +24,19 @@
 # include <arpa/inet.h>
 # include <map>
 # include <memory>
+# include <system_error>
+# include <openssl/rand.h>
+
 
 class Server
 {
 	public:
+		enum class ServerType{
+			SECURE_ONLY,
+			SECURE,
+			STANDARD
+		};
+
 		//Constructors
 		Server(void);
 		Server(std::shared_ptr<Tintin_reporter>& reporter) noexcept;
@@ -43,12 +52,14 @@ class Server
 		Server&	operator=(Server && rhs);
 
 		//Member functions
-		bool	create_server(void);
+		bool	create_server(Server::ServerType type);
 		void	serve(void);
 	
 	private:
 		int									_sockfd;
+		int									_securesockfd;
 		int									_epollfd;
+		unsigned char						_key[32];
 		std::shared_ptr<Tintin_reporter>	_reporter;
 		struct epoll_event					_events[5];
 		struct epoll_event					_init;
@@ -57,6 +68,7 @@ class Server
 		//Private member functions
 		bool	epoll_add(int fd, uint32_t events);
 		bool	epoll_del(int fd);
+		bool	epoll_mod(int fd, uint32_t events);
 };
 
 #endif

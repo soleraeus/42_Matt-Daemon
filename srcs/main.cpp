@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/06 21:11:08 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/24 23:22:41 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,15 +64,53 @@ void	exit_procedure(std::shared_ptr<Tintin_reporter>& reporter, int & lock)
 		close(lock);
 }
 
-int	main(void)
+int	main(int ac, char **av)
 {
+	bool								secure = false;
+	bool								secure_only = false;
 	int									lock;
+	int									opt;
 	std::shared_ptr<Tintin_reporter>	reporter;
 
 	if (getuid() != 0)
 	{
 		std::cerr << "Matt_daemon requires to be started as root" << std::endl;
 		return (1);
+	}
+	while ((opt = getopt(ac, av, "hsx")) != -1)
+	{
+		switch (opt) {
+			case 'h':
+				std::cout << "Usage: " << std::endl << av[0] << " [OPTION]" << std::endl << std::endl;
+				std::cout << "Starts a daemon listening on port 4242 which logs every strings sent to it.";
+				std::cout << " Options allow you to start a more secure server on port 4343 using aes256 for encrypted communication" << std::endl;
+				std::cout << "Valid options: " << std::endl;
+				std::cout << "  -h: Display this help page" << std::endl;
+				std::cout << "  -s: Start a secure server on port 4343 which relies on aes256 encryption" << std::endl;
+				std::cout << "  -x: Start the secure server only and do not start the standard one on port 4242.";
+				std::cout << " This option is not compatible with -s." << std::endl;
+				return (0);
+				break ;
+			case 's':
+				if (secure_only)
+				{
+					std::cerr << "Cannot combine option -s with option -x. For more information display help with " << av[0] << " -h" << std::endl;
+				   return (1);	
+				}
+				secure = true;
+				break ;
+			case 'x':
+				if (secure)
+				{
+					std::cerr << "Cannot combine option -s with option -x. For more information display help with " << av[0] << " -h" << std::endl;
+					return (1);
+				}
+				secure_only = true;
+				break ;
+			default:
+				std::cerr << "Unkown option provided. Please see " << av[0] << " -h for more information on usage" << std::endl; 
+				return (1);
+		}
 	}
 	try
 	{
@@ -138,7 +176,7 @@ int	main(void)
 			break ;
 	}
 	Server server = Server(reporter);
-	if (!server.create_server())
+	if (!server.create_server(secure ? Server::ServerType::SECURE : (secure_only ? Server::ServerType::SECURE_ONLY : Server::ServerType::STANDARD)))
 	{
 		std::cerr << "Could not create server" << std::endl;
 		if (reporter->log("Could not create server", ERROR) != Tintin_reporter::Return::OK) {}
