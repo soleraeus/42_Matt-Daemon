@@ -13,7 +13,6 @@ QT_END_NAMESPACE
 
 enum PageIndex {
     Choice,
-    Key,
     Loading,
     Chat
 };
@@ -35,9 +34,6 @@ private slots:
     void onDisconnect();
     void timeout();
     void sendLine();
-    void changePubPath();
-    void changePrivatePath();
-    void pressButtonValidateKey();
     void tryLogging();
 
 private:
@@ -45,7 +41,5 @@ private:
     bool            isSecure;
     bool            isLogged;
     QTcpSocket      *socket;
-    QString         pathPubKey;
-    QString         pathPrivateKey;
 };
 #endif // MAINWINDOW_H

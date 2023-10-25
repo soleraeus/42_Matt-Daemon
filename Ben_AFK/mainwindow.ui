@@ -63,37 +63,6 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="pageKey">
-       <layout class="QGridLayout" name="gridLayout_9">
-        <item row="0" column="1">
-         <widget class="QPushButton" name="buttonPubKey">
-          <property name="text">
-           <string>public</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="0">
-         <widget class="QLineEdit" name="linePubKey"/>
-        </item>
-        <item row="1" column="1">
-         <widget class="QPushButton" name="buttonPrivateKey">
-          <property name="text">
-           <string>private</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLineEdit" name="linePrivateKey"/>
-        </item>
-        <item row="2" column="1">
-         <widget class="QPushButton" name="buttonValidateKey">
-          <property name="text">
-           <string>validate</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </widget>
       <widget class="QWidget" name="pageLoading">
        <layout class="QGridLayout" name="gridLayout_5">
         <item row="0" column="0">

@@ -11,17 +11,10 @@ MainWindow::MainWindow(QWidget *parent)
     isLogged = false;
     ui->textLog->setPlaceholderText("<LOG>");
     ui->lineChat->setPlaceholderText("write here");
-    ui->linePubKey->setPlaceholderText("Path to public key");
-    ui->linePrivateKey->setPlaceholderText("Path to private key");
-    pathPubKey = "";
-    pathPrivateKey = "";
 
     connect(ui->buttonStandard, &QPushButton::clicked, this, &MainWindow::standard);
     connect(ui->buttonSecured, &QPushButton::clicked, this, &MainWindow::secured);
     connect(ui->tabWidget, &QTabWidget::currentChanged, this, &MainWindow::changeTab);
-    connect(ui->buttonPubKey, &QPushButton::clicked, this, &MainWindow::changePubPath);
-    connect(ui->buttonPrivateKey, &QPushButton::clicked, this, &MainWindow::changePrivatePath);
-    connect(ui->buttonValidateKey, &QPushButton::clicked, this, &MainWindow::pressButtonValidateKey);
     connect(ui->buttonSubmit, &QPushButton::clicked, this, &MainWindow::tryLogging);
 }
 
@@ -71,7 +64,7 @@ void MainWindow::onConnect() {
     qDebug() << "socket is connected !";
     connect(socket, &QTcpSocket::disconnected, this, &MainWindow::onDisconnect);
     if (isSecure) {
-        ui->stackedWidget->setCurrentIndex(PageIndex::Key);
+        ui->stackedWidget->setCurrentIndex(PageIndex::Chat);
         // Do the thing to secure the connection
     } else {
         ui->stackedWidget->setCurrentIndex(PageIndex::Chat);
@@ -111,20 +104,6 @@ void MainWindow::sendLine() {
         socket->write(ui->lineChat->text().toUtf8() + "\n");
     }
     ui->lineChat->clear();
-}
-
-void MainWindow::changePubPath() {
-    pathPubKey = QFileDialog::getOpenFileName(this, tr("Open public key"), "/home");
-    ui->linePubKey->setText(pathPubKey);
-}
-
-void MainWindow::changePrivatePath() {
-    pathPrivateKey = QFileDialog::getOpenFileName(this, tr("Open private key"), "/home");
-    ui->linePrivateKey->setText(pathPrivateKey);
-}
-
-void MainWindow::pressButtonValidateKey() {
-    ui->stackedWidget->setCurrentIndex(PageIndex::Chat);
 }
 
 void MainWindow::tryLogging() {

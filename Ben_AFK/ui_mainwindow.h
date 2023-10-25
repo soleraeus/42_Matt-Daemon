@@ -39,13 +39,6 @@ public:
     QPushButton *buttonStandard;
     QPushButton *buttonSecured;
     QLineEdit *lineIp;
-    QWidget *pageKey;
-    QGridLayout *gridLayout_9;
-    QPushButton *buttonPubKey;
-    QLineEdit *linePubKey;
-    QPushButton *buttonPrivateKey;
-    QLineEdit *linePrivateKey;
-    QPushButton *buttonValidateKey;
     QWidget *pageLoading;
     QGridLayout *gridLayout_5;
     QLabel *labelMovie;
@@ -111,36 +104,6 @@ public:
         gridLayout_4->addWidget(lineIp, 0, 0, 1, 1);
 
         stackedWidget->addWidget(pageChoose);
-        pageKey = new QWidget();
-        pageKey->setObjectName("pageKey");
-        gridLayout_9 = new QGridLayout(pageKey);
-        gridLayout_9->setObjectName("gridLayout_9");
-        buttonPubKey = new QPushButton(pageKey);
-        buttonPubKey->setObjectName("buttonPubKey");
-
-        gridLayout_9->addWidget(buttonPubKey, 0, 1, 1, 1);
-
-        linePubKey = new QLineEdit(pageKey);
-        linePubKey->setObjectName("linePubKey");
-
-        gridLayout_9->addWidget(linePubKey, 0, 0, 1, 1);
-
-        buttonPrivateKey = new QPushButton(pageKey);
-        buttonPrivateKey->setObjectName("buttonPrivateKey");
-
-        gridLayout_9->addWidget(buttonPrivateKey, 1, 1, 1, 1);
-
-        linePrivateKey = new QLineEdit(pageKey);
-        linePrivateKey->setObjectName("linePrivateKey");
-
-        gridLayout_9->addWidget(linePrivateKey, 1, 0, 1, 1);
-
-        buttonValidateKey = new QPushButton(pageKey);
-        buttonValidateKey->setObjectName("buttonValidateKey");
-
-        gridLayout_9->addWidget(buttonValidateKey, 2, 1, 1, 1);
-
-        stackedWidget->addWidget(pageKey);
         pageLoading = new QWidget();
         pageLoading->setObjectName("pageLoading");
         gridLayout_5 = new QGridLayout(pageLoading);
@@ -244,9 +207,6 @@ public:
         buttonStandard->setText(QCoreApplication::translate("MainWindow", "standard", nullptr));
         buttonSecured->setText(QCoreApplication::translate("MainWindow", "secured", nullptr));
         lineIp->setText(QCoreApplication::translate("MainWindow", "localhost", nullptr));
-        buttonPubKey->setText(QCoreApplication::translate("MainWindow", "public", nullptr));
-        buttonPrivateKey->setText(QCoreApplication::translate("MainWindow", "private", nullptr));
-        buttonValidateKey->setText(QCoreApplication::translate("MainWindow", "validate", nullptr));
         labelMovie->setText(QCoreApplication::translate("MainWindow", "                                                         LOADING", nullptr));
         buttonSend->setText(QCoreApplication::translate("MainWindow", "send", nullptr));
         tabWidget->setTabText(tabWidget->indexOf(tabChat), QCoreApplication::translate("MainWindow", "chat", nullptr));
