@@ -5,6 +5,7 @@
 TEMPLATE = app
 TARGET = client
 INCLUDEPATH += .
+LIBS += ../libs/openssl-3.0.11/libcrypto.a
 
 # You can make your code fail to compile if you use deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -14,6 +15,6 @@ INCLUDEPATH += .
 #DEFINES += QT_DISABLE_DEPRECATED_UP_TO=0x060000 # disables all APIs deprecated in Qt 6.0.0 and earlier
 QT += core gui widgets network
 # Input
-HEADERS += mainwindow.h ui_mainwindow.h
+HEADERS += mainwindow.h ui_mainwindow.h secured_client.hpp
 FORMS += mainwindow.ui
-SOURCES += main.cpp mainwindow.cpp
+SOURCES += main.cpp mainwindow.cpp secured_client.cpp

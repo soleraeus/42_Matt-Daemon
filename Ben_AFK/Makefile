@@ -37,10 +37,10 @@ MOVE          = mv -f
 TAR           = tar -cf
 COMPRESS      = gzip -9f
 DISTNAME      = client1.0.0
-DISTDIR = /home/theodore/client/.tmp/client1.0.0
+DISTDIR = /home/theodore/matt-daemon/Ben_AFK/.tmp/client1.0.0
 LINK          = g++
 LFLAGS        = -Wl,-O1
-LIBS          = $(SUBLIBS) /opt/Qt/lib/objects-Release/Gui_resources_1/.rcc/qrc_qpdf.cpp.o /opt/Qt/lib/objects-Release/Gui_resources_2/.rcc/qrc_gui_shaders.cpp.o /opt/Qt/plugins/platforms/libqxcb.a /opt/Qt/plugins/xcbglintegrations/libqxcb-egl-integration.a /opt/Qt/plugins/xcbglintegrations/libqxcb-glx-integration.a /opt/Qt/lib/libQt6XcbQpa.a -lxkbcommon-x11 -lxcb-cursor -lxcb-icccm -lxcb-image -lxcb-keysyms -lxcb-randr -lxcb-render-util -lxcb-shm -lxcb-sync -lxcb-xfixes -lxcb-render -lxcb-shape -lxcb-xkb -lSM -lICE -lxcb-glx /opt/Qt/plugins/iconengines/libqsvgicon.a /opt/Qt/plugins/imageformats/libqgif.a /opt/Qt/plugins/imageformats/libqicns.a /opt/Qt/plugins/imageformats/libqico.a /opt/Qt/plugins/imageformats/libqjpeg.a -ljpeg /opt/Qt/plugins/imageformats/libqsvg.a /opt/Qt/lib/libQt6Svg.a /opt/Qt/plugins/imageformats/libqtga.a /opt/Qt/plugins/imageformats/libqtiff.a /opt/Qt/plugins/imageformats/libqwbmp.a /opt/Qt/plugins/imageformats/libqwebp.a /opt/Qt/lib/objects-Release/EglFSDeviceIntegrationPrivate_resources_1/.rcc/qrc_cursor.cpp.o /opt/Qt/plugins/egldeviceintegrations/libqeglfs-emu-integration.a /opt/Qt/plugins/egldeviceintegrations/libqeglfs-kms-egldevice-integration.a /opt/Qt/plugins/egldeviceintegrations/libqeglfs-kms-integration.a /opt/Qt/lib/libQt6EglFsKmsGbmSupport.a /opt/Qt/lib/libQt6EglFsKmsSupport.a /opt/Qt/lib/libQt6KmsSupport.a -ldrm -lgbm /opt/Qt/plugins/egldeviceintegrations/libqeglfs-x11-integration.a /opt/Qt/lib/libQt6EglFSDeviceIntegration.a /opt/Qt/lib/libQt6FbSupport.a /opt/Qt/lib/libQt6InputSupport.a /opt/Qt/lib/libQt6DeviceDiscoverySupport.a -linput -ludev /opt/Qt/lib/libQt6OpenGL.a -lX11-xcb -lxcb /opt/Qt/plugins/networkinformation/libqglib.a -lgobject-2.0 -lgio-2.0 /opt/Qt/plugins/networkinformation/libqnetworkmanager.a /opt/Qt/plugins/tls/libqopensslbackend.a /opt/Qt/lib/objects-Release/Widgets_resources_1/.rcc/qrc_qstyle.cpp.o /opt/Qt/lib/objects-Release/Widgets_resources_2/.rcc/qrc_qstyle1.cpp.o /opt/Qt/lib/objects-Release/Widgets_resources_3/.rcc/qrc_qmessagebox.cpp.o /opt/Qt/lib/libQt6Widgets.a /opt/Qt/lib/libQt6Gui.a -lEGL -lpng -lharfbuzz -lfreetype -lfontconfig -lX11 /opt/Qt/lib/libQt6DBus.a -lxkbcommon /opt/Qt/lib/libQt6Network.a -lbrotlidec -lresolv -lgssapi_krb5 /opt/Qt/lib/libQt6Core.a -lz -lm -licui18n -licuuc -licudata -lpcre2-16 -lzstd -ldl -lglib-2.0 -lgthread-2.0 -lrt -lpthread -lGLX -lOpenGL   
+LIBS          = $(SUBLIBS) ../libs/openssl-3.0.11/libcrypto.a /opt/Qt/lib/objects-Release/Gui_resources_1/.rcc/qrc_qpdf.cpp.o /opt/Qt/lib/objects-Release/Gui_resources_2/.rcc/qrc_gui_shaders.cpp.o /opt/Qt/plugins/platforms/libqxcb.a /opt/Qt/plugins/xcbglintegrations/libqxcb-egl-integration.a /opt/Qt/plugins/xcbglintegrations/libqxcb-glx-integration.a /opt/Qt/lib/libQt6XcbQpa.a -lxkbcommon-x11 -lxcb-cursor -lxcb-icccm -lxcb-image -lxcb-keysyms -lxcb-randr -lxcb-render-util -lxcb-shm -lxcb-sync -lxcb-xfixes -lxcb-render -lxcb-shape -lxcb-xkb -lSM -lICE -lxcb-glx /opt/Qt/plugins/iconengines/libqsvgicon.a /opt/Qt/plugins/imageformats/libqgif.a /opt/Qt/plugins/imageformats/libqicns.a /opt/Qt/plugins/imageformats/libqico.a /opt/Qt/plugins/imageformats/libqjpeg.a -ljpeg /opt/Qt/plugins/imageformats/libqsvg.a /opt/Qt/lib/libQt6Svg.a /opt/Qt/plugins/imageformats/libqtga.a /opt/Qt/plugins/imageformats/libqtiff.a /opt/Qt/plugins/imageformats/libqwbmp.a /opt/Qt/plugins/imageformats/libqwebp.a /opt/Qt/lib/objects-Release/EglFSDeviceIntegrationPrivate_resources_1/.rcc/qrc_cursor.cpp.o /opt/Qt/plugins/egldeviceintegrations/libqeglfs-emu-integration.a /opt/Qt/plugins/egldeviceintegrations/libqeglfs-kms-egldevice-integration.a /opt/Qt/plugins/egldeviceintegrations/libqeglfs-kms-integration.a /opt/Qt/lib/libQt6EglFsKmsGbmSupport.a /opt/Qt/lib/libQt6EglFsKmsSupport.a /opt/Qt/lib/libQt6KmsSupport.a -ldrm -lgbm /opt/Qt/plugins/egldeviceintegrations/libqeglfs-x11-integration.a /opt/Qt/lib/libQt6EglFSDeviceIntegration.a /opt/Qt/lib/libQt6FbSupport.a /opt/Qt/lib/libQt6InputSupport.a /opt/Qt/lib/libQt6DeviceDiscoverySupport.a -linput -ludev /opt/Qt/lib/libQt6OpenGL.a -lX11-xcb -lxcb /opt/Qt/plugins/networkinformation/libqglib.a -lgobject-2.0 -lgio-2.0 /opt/Qt/plugins/networkinformation/libqnetworkmanager.a /opt/Qt/plugins/tls/libqopensslbackend.a /opt/Qt/lib/objects-Release/Widgets_resources_1/.rcc/qrc_qstyle.cpp.o /opt/Qt/lib/objects-Release/Widgets_resources_2/.rcc/qrc_qstyle1.cpp.o /opt/Qt/lib/objects-Release/Widgets_resources_3/.rcc/qrc_qmessagebox.cpp.o /opt/Qt/lib/libQt6Widgets.a /opt/Qt/lib/libQt6Gui.a -lEGL -lpng -lharfbuzz -lfreetype -lfontconfig -lX11 /opt/Qt/lib/libQt6DBus.a -lxkbcommon /opt/Qt/lib/libQt6Network.a -lbrotlidec -lresolv -lgssapi_krb5 /opt/Qt/lib/libQt6Core.a -lz -lm -licui18n -licuuc -licudata -lpcre2-16 -lzstd -ldl -lglib-2.0 -lgthread-2.0 -lrt -lpthread -lGLX -lOpenGL   
 AR            = ar cqs
 RANLIB        = 
 SED           = sed
@@ -53,10 +53,12 @@ OBJECTS_DIR   = ./
 ####### Files
 
 SOURCES       = main.cpp \
-		mainwindow.cpp /home/theodore/client/client_plugin_import.cpp \
+		mainwindow.cpp \
+		secured_client.cpp /home/theodore/matt-daemon/Ben_AFK/client_plugin_import.cpp \
 		moc_mainwindow.cpp
 OBJECTS       = main.o \
 		mainwindow.o \
+		secured_client.o \
 		client_plugin_import.o \
 		moc_mainwindow.o
 DIST          = /opt/Qt/mkspecs/features/spec_pre.prf \
@@ -430,8 +432,10 @@ DIST          = /opt/Qt/mkspecs/features/spec_pre.prf \
 		/opt/Qt/mkspecs/features/yacc.prf \
 		/opt/Qt/mkspecs/features/lex.prf \
 		client.pro mainwindow.h \
-		ui_mainwindow.h main.cpp \
-		mainwindow.cpp
+		ui_mainwindow.h \
+		secured_client.hpp main.cpp \
+		mainwindow.cpp \
+		secured_client.cpp
 QMAKE_TARGET  = client
 DESTDIR       = 
 TARGET        = client
@@ -1249,8 +1253,8 @@ distdir: FORCE
 	@test -d $(DISTDIR) || mkdir -p $(DISTDIR)
 	$(COPY_FILE) --parents $(DIST) $(DISTDIR)/
 	$(COPY_FILE) --parents /opt/Qt/mkspecs/features/data/dummy.cpp $(DISTDIR)/
-	$(COPY_FILE) --parents mainwindow.h ui_mainwindow.h $(DISTDIR)/
-	$(COPY_FILE) --parents main.cpp mainwindow.cpp $(DISTDIR)/
+	$(COPY_FILE) --parents mainwindow.h ui_mainwindow.h secured_client.hpp $(DISTDIR)/
+	$(COPY_FILE) --parents main.cpp mainwindow.cpp secured_client.cpp $(DISTDIR)/
 	$(COPY_FILE) --parents mainwindow.ui $(DISTDIR)/
 
 
@@ -1261,7 +1265,7 @@ clean: compiler_clean
 
 distclean: clean 
 	-$(DEL_FILE) $(TARGET) 
-	-$(DEL_FILE) /home/theodore/client/client_plugin_import.cpp .qmake.stash
+	-$(DEL_FILE) /home/theodore/matt-daemon/Ben_AFK/client_plugin_import.cpp .qmake.stash
 	-$(DEL_FILE) Makefile
 
 
@@ -1503,7 +1507,7 @@ moc_mainwindow.cpp: mainwindow.h \
 		/opt/Qt/include/QtWidgets/qdialog.h \
 		moc_predefs.h \
 		/opt/Qt/libexec/moc
-	/opt/Qt/libexec/moc $(DEFINES) --include /home/theodore/client/moc_predefs.h -I/opt/Qt/mkspecs/linux-g++ -I/home/theodore/client -I/home/theodore/client -I/opt/Qt/include -I/opt/Qt/include/QtWidgets -I/opt/Qt/include/QtGui -I/opt/Qt/include/QtNetwork -I/opt/Qt/include/QtCore -I/usr/include/c++/13 -I/usr/include/c++/13/x86_64-redhat-linux -I/usr/include/c++/13/backward -I/usr/lib/gcc/x86_64-redhat-linux/13/include -I/usr/local/include -I/usr/include mainwindow.h -o moc_mainwindow.cpp
+	/opt/Qt/libexec/moc $(DEFINES) --include /home/theodore/matt-daemon/Ben_AFK/moc_predefs.h -I/opt/Qt/mkspecs/linux-g++ -I/home/theodore/matt-daemon/Ben_AFK -I/home/theodore/matt-daemon/Ben_AFK -I/opt/Qt/include -I/opt/Qt/include/QtWidgets -I/opt/Qt/include/QtGui -I/opt/Qt/include/QtNetwork -I/opt/Qt/include/QtCore -I/usr/include/c++/13 -I/usr/include/c++/13/x86_64-redhat-linux -I/usr/include/c++/13/backward -I/usr/lib/gcc/x86_64-redhat-linux/13/include -I/usr/local/include -I/usr/include mainwindow.h -o moc_mainwindow.cpp
 
 compiler_moc_objc_header_make_all:
 compiler_moc_objc_header_clean:
@@ -2003,8 +2007,11 @@ mainwindow.o: mainwindow.cpp mainwindow.h \
 		/opt/Qt/include/QtWidgets/QWidget
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o mainwindow.o mainwindow.cpp
 
-client_plugin_import.o: /home/theodore/client/client_plugin_import.cpp 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o client_plugin_import.o /home/theodore/client/client_plugin_import.cpp
+secured_client.o: secured_client.cpp secured_client.hpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o secured_client.o secured_client.cpp
+
+client_plugin_import.o: /home/theodore/matt-daemon/Ben_AFK/client_plugin_import.cpp 
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o client_plugin_import.o /home/theodore/matt-daemon/Ben_AFK/client_plugin_import.cpp
 
 moc_mainwindow.o: moc_mainwindow.cpp 
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o moc_mainwindow.o moc_mainwindow.cpp
