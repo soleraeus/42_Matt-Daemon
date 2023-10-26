@@ -127,34 +127,45 @@ Client::Return  Client::getPacketSize(void)
     {
         if (this->_encrypted_buffer[i] == '\n')
         {
-            if (i < 8 || i > 12)
+            if (i < 8 || i > 12) {
+                std::cerr << "Length too short" << std::endl;
                 return Client::Return::KICK;
-            if (memcmp((void *)"Length ",(void *)&this->_encrypted_buffer[0], 7))
+            }
+            if (memcmp((void *)"Length ",(void *)&this->_encrypted_buffer[0], 7)) {
+                std::cerr << "First characters are not Length " << std::endl;
                 return Client::Return::KICK;
+            }
             pos = i;
             if (this->_encrypted_buffer[i - 1] == '\r')
                 pos = i - 1;
-            if (pos == 7)
+            if (pos == 7) {
+                std::cerr << "Length not included" << std::endl;
                 return Client::Return::KICK;
+            }
             this->_encrypted_buffer[pos] = '\0';
             for (size_t j = 7; j < pos; ++j)
             {
-                if (this->_encrypted_buffer[j] < '0' || this->_encrypted_buffer[j] > '9')
+                if (this->_encrypted_buffer[j] < '0' || this->_encrypted_buffer[j] > '9') {
+                    std::cerr << "Length provided includes something other than digits" << std::endl;
                     return Client::Return::KICK;
+                }
             }
             this->_packetsize = std::atoi(&this->_encrypted_buffer[7]);
-            if (this->_packetsize > PIPE_BUF + 128 + 16)
+            if (this->_packetsize > PIPE_BUF + 128 + 32)
                 return Client::Return::KICK;
             this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + i + 1);
             return Client::Return::OK;
         }
         if ((this->_encrypted_buffer[i] < ' ' || this->_encrypted_buffer[i] > 'z')
             && this->_encrypted_buffer[i] != '\r') {
+            std::cerr << "Length part of encrypted buffer contains illegal characters" << std::endl;
             return Client::Return::KICK;
         }
     }
-    if (this->_encrypted_buffer.size() > 12)
+    if (this->_encrypted_buffer.size() > 12) {
+        std::cerr << "Length is taking too many characters" << std::endl;
         return Client::Return::KICK;
+    }
     return Client::Return::OK;
 }
 
@@ -193,8 +204,10 @@ Client::Return  Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
     Client::Return          ret;
     
     len = recv(this->_fd, (void *)this->_recv_buffer, PIPE_BUF, MSG_DONTWAIT);
-    if (len <= 0)
+    if (len <= 0) {
+        std::cerr << "Received len 0" << std::endl;
         return Client::Return::KICK;
+    }
     if (this->_secure)
     {
         this->_encrypted_buffer.insert(this->_encrypted_buffer.end(), this->_recv_buffer, &this->_recv_buffer[len]);
@@ -212,34 +225,48 @@ Client::Return  Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
             }
             if (!this->_authenticated) {
                 this->_buffer.clear();
-                if (!this->decrypt())
+                if (!this->decrypt()) {
+                    std::cerr << "Decryption failed" << std::endl;
                     return Client::Return::KICK;
+                }
                 this->_auth_tries += 1;
                 if (this->_buffer != (this->_username + "\n" + this->_password + "\n")) {
+                  std::cerr << "Authentication failed" << std::endl;
                     if (this->_auth_tries >= 3) {
                         this->_send_buffer = "AUTH KO - TOO MANY TRIES\n";
                     }
                     else {
                         this->_send_buffer = "AUTH KO\n";
                     }
-                    if (!this->encrypt(reporter))
+                    if (!this->encrypt(reporter)) {
+                        std::cerr << "Encryption failed" << std::endl;
                         return Client::Return::KICK;
+                    }
+                    std::cerr << "Sending back packet of size " << this->_send_buffer.size() << std::endl;
                     std::string header = "Length ";
                     header += std::to_string(this->_send_buffer.size());
                     header += "\n";
+                    std::cerr << "Header: " << header << std::endl;
                     this->_send_buffer.insert(this->_send_buffer.begin(), header.begin(), header.end());
+                    this->_buffer.clear();
+                    this->_packetsize = 0;
                     return Client::Return::SEND;
                 }
                 else {
+                  std::cerr << "Authentication successful" << std::endl;
                     this->_buffer.clear();
                     this->_authenticated = true;
                     this->_send_buffer = "AUTH OK\n";
                     if (!this->encrypt(reporter))
                         return Client::Return::KICK;
+
+                    std::cerr << "Sending back packet of size " << this->_send_buffer.size() << std::endl;
                     std::string header = "Length ";
                     header += std::to_string(this->_send_buffer.size());
                     header += "\n";
+                    std::cerr << "Header: " << header << std::endl;
                     this->_send_buffer.insert(this->_send_buffer.begin(), header.begin(), header.end());
+                    this->_packetsize = 0;
                     return Client::Return::SEND;
                 }
             }
@@ -334,6 +361,7 @@ Client::Return    Client::send(void) {
    }
    if (ret == this->_send_buffer.size()) {
        this->_send_buffer.clear();
+       std::cerr << "Auth tries " << this->_auth_tries << ", authenticated " << this->_authenticated << std::endl;
        if (this->_auth_tries >= 3 && !this->_authenticated)
            return Client::Return::KICK;
        return Client::Return::OK;
@@ -351,8 +379,10 @@ bool    Client::decrypt(void) {
         OSSL_PARAM_END, OSSL_PARAM_END
     };
 
+    std::cerr << "Packet size: " << this->_packetsize << std::endl;
     //Get tag
     if (this->_packetsize < 16) {
+        std::cerr << "Packet size too small" << std::endl;
         return false;
     }
     tag.assign(this->_encrypted_buffer.begin() + this->_packetsize - 16, this->_encrypted_buffer.begin() + this->_packetsize);
@@ -366,11 +396,13 @@ bool    Client::decrypt(void) {
      * IV length parameter.
      */
     if (!EVP_DecryptInit_ex2(_ctx, _cipher, _key, _iv, params)) {
+      std::cerr << "Could not init decrypt" << std::endl;
         return false;
     }
 
     /* Decrypt plaintext */
     if (!EVP_DecryptUpdate(_ctx, outbuf, &outlen, reinterpret_cast<unsigned char*>(this->_encrypted_buffer.data()), this->_packetsize - 16)) {
+      std::cerr << "Could not decrypt" << std::endl;
         return false;
     }
 
@@ -384,6 +416,8 @@ bool    Client::decrypt(void) {
     if (outlen < 16) {
         return false;
     }
+    std::cerr << "Decrypted with iv" << std::endl;
+    BIO_dump_fp(stderr, this->_iv, 16);
     memcpy(this->_iv, outbuf + outlen - 16, 16);
     this->_buffer.insert(this->_buffer.end(), outbuf, outbuf + outlen - 16);
     this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
@@ -395,6 +429,7 @@ bool    Client::decrypt(void) {
      * failed and plaintext is not trustworthy.
      */
     if (rv <= 0) {
+      std::cerr << "tag verification failed" << std::endl;
         return false;
     }
     //EVP_CIPHER_CTX_reset(this->_ctx);
@@ -445,6 +480,8 @@ bool    Client::encrypt(std::shared_ptr<Tintin_reporter>& reporter) {
     }
 
     /* Output tag */
+    std::cerr << "Encrypted with iv" << std::endl;
+    BIO_dump_fp(stderr, this->_iv, 16);
     this->_send_buffer.assign(outbuf, outbuf + outlen);
     this->_send_buffer.insert(this->_send_buffer.end(), outtag, outtag + 16);
     memcpy(this->_iv, nextiv, 16);

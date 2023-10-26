@@ -464,6 +464,7 @@ int Client::run(void) {
                         if (this->_buf.size() >= this->_packetsize) {
                             if (!this->decryptAESKey())
                                 return 1;
+                            this->_buf.clear();
                             memset(&_event, 0, sizeof(_event));
                             _event.data.fd = _sockfd;
                             _event.events = EPOLLOUT;
@@ -471,6 +472,7 @@ int Client::run(void) {
                                 std::cerr << "Could not modify socket event in epoll" << std::endl;
                                 return 1;
                             }
+                            this->_packetsize = 0;
                         }
                     }
                 }
@@ -500,6 +502,8 @@ int Client::run(void) {
                         return 1;
                     }
                     if (this->_packetsize) {
+                      std::cerr << "Receiving packet of size " << this->_packetsize << std::endl;
+                      std::cerr << "Current buf size if " << this->_buf.size() << std::endl;
                         if (this->_buf.size() >= this->_packetsize) {
                             if (!this->decrypt())
                                 return 1;
@@ -520,6 +524,8 @@ int Client::run(void) {
                             }
                             this->_buf.clear();
                             this->_inbuf.clear();
+                            this->_packetsize = 0;
+                            pending = false;
                             memset(&_event, 0, sizeof(_event));
                             _event.data.fd = _sockfd;
                             _event.events = EPOLLOUT;
@@ -619,6 +625,7 @@ bool    Client::encrypt(void) {
     OSSL_PARAM params[2] = {OSSL_PARAM_END, OSSL_PARAM_END};
 
     this->_buf += '\n';
+    std::cerr << "buf to encrypt " <<  this->_buf << std::endl;
     if (this->_buf.size() > PIPE_BUF) {
         std::cerr << "You cannot send more than " << PIPE_BUF << " bytes to Matt_daemon" << std::endl;
         return false;
@@ -658,6 +665,8 @@ bool    Client::encrypt(void) {
         return false;
     }
 
+    std::cerr << "encrypted with iv";
+    BIO_dump_fp(stderr, this->_iv, 16);
     /* Output tag */
     _buf.assign(outbuf, outbuf + outlen);
     _buf.insert(_buf.end(), outtag, outtag + 16);
@@ -713,6 +722,8 @@ bool    Client::decrypt(void) {
         std::cerr << "Decrypted packet too small" << std::endl;
         return false;
     }
+    std::cerr << "Decrypted with iv" << std::endl;
+    BIO_dump_fp(stderr, this->_iv, 16);
     memcpy(this->_iv, outbuf + outlen - 16, 16);
     this->_inbuf.assign(outbuf, outbuf + outlen - 16);
     this->_buf.erase(this->_buf.begin(), this->_buf.begin() + this->_packetsize);
