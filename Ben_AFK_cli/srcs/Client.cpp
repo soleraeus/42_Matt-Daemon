@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/26 21:21:09 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/26 22:49:25 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -502,8 +502,6 @@ int Client::run(void) {
                         return 1;
                     }
                     if (this->_packetsize) {
-                      std::cerr << "Receiving packet of size " << this->_packetsize << std::endl;
-                      std::cerr << "Current buf size if " << this->_buf.size() << std::endl;
                         if (this->_buf.size() >= this->_packetsize) {
                             if (!this->decrypt())
                                 return 1;
@@ -625,7 +623,6 @@ bool    Client::encrypt(void) {
     OSSL_PARAM params[2] = {OSSL_PARAM_END, OSSL_PARAM_END};
 
     this->_buf += '\n';
-    std::cerr << "buf to encrypt " <<  this->_buf << std::endl;
     if (this->_buf.size() > PIPE_BUF) {
         std::cerr << "You cannot send more than " << PIPE_BUF << " bytes to Matt_daemon" << std::endl;
         return false;
@@ -665,8 +662,6 @@ bool    Client::encrypt(void) {
         return false;
     }
 
-    std::cerr << "encrypted with iv";
-    BIO_dump_fp(stderr, this->_iv, 16);
     /* Output tag */
     _buf.assign(outbuf, outbuf + outlen);
     _buf.insert(_buf.end(), outtag, outtag + 16);
@@ -722,8 +717,6 @@ bool    Client::decrypt(void) {
         std::cerr << "Decrypted packet too small" << std::endl;
         return false;
     }
-    std::cerr << "Decrypted with iv" << std::endl;
-    BIO_dump_fp(stderr, this->_iv, 16);
     memcpy(this->_iv, outbuf + outlen - 16, 16);
     this->_inbuf.assign(outbuf, outbuf + outlen - 16);
     this->_buf.erase(this->_buf.begin(), this->_buf.begin() + this->_packetsize);

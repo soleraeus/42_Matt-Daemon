@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:42:18 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/26 19:40:18 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/26 22:45:41 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -303,7 +303,6 @@ void    Server::serve(void)
                     if (this->_events[i].events & EPOLLOUT) {
                         switch (it->second.send()) {
                             case Client::Return::KICK:
-                                std::cerr << "Matt daemon instructed to kick client" <<std::endl;
                                 this->epoll_del(this->_events[i].data.fd);
                                 this->_clients.erase(it);
                                 break ;
@@ -322,7 +321,6 @@ void    Server::serve(void)
                             return ;
                             break ;
                         case Client::Return::KICK:
-                            std::cerr << "Matt daemon instructed to kick client" <<std::endl;
                             this->epoll_del(this->_events[i].data.fd);
                             this->_clients.erase(it);
                             break ;
