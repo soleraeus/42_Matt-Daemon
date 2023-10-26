@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/26 19:23:26 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/26 19:29:18 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -125,10 +125,9 @@ int	main(int ac, char **av)
                 std::cout << "Invalid username provided" << std::endl;
         } while (!std::cin.eof());
         if (std::cin.eof()) {
-            std::cerr << "No username provided, leaving Matt Daemon" << std::endl;
+            std::cerr << std::endl << "No username provided, leaving Matt Daemon" << std::endl;
             return 1;
         }
-        std::cout << std::endl;
         do {
             std::cout << "Password (between 12 and 128 characters): ";
             std::getline(std::cin, password);
@@ -139,10 +138,9 @@ int	main(int ac, char **av)
 
         } while (!std::cin.eof());
         if (std::cin.eof()) {
-            std::cerr << "No password provided, leaving Matt Daemon" << std::endl;
+            std::cerr << std::endl << "No password provided, leaving Matt Daemon" << std::endl;
             return 1;
         }
-        std::cout << std::endl;
     }
 	try
 	{
@@ -208,7 +206,7 @@ int	main(int ac, char **av)
 			break ;
 	}
 	Server server = Server(reporter);
-	if (!server.create_server(secure ? Server::ServerType::SECURE : (secure_only ? Server::ServerType::SECURE_ONLY : Server::ServerType::STANDARD)))
+	if (!server.create_server(secure ? Server::ServerType::SECURE : (secure_only ? Server::ServerType::SECURE_ONLY : Server::ServerType::STANDARD), username, password))
 	{
 		std::cerr << "Could not create server" << std::endl;
 		if (reporter->log("Could not create server", ERROR) != Tintin_reporter::Return::OK) {}

@@ -6,31 +6,31 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/24 21:55:55 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/26 21:15:58 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
 
-Client::Client(void): _fd(0), _packetsize(0), _secure(false), _handshake(false), _key(nullptr), _ctx(nullptr), _cipher(nullptr) {}
-Client::Client(int fd, bool secure, unsigned char* key): _fd(fd), _packetsize(0), _secure(secure), _handshake(false), _key(key), _ctx(nullptr), _cipher(nullptr) {
-    if (secure)
+Client::Client(void): _fd(0), _packetsize(0), _secure(false), _handshake(false), _key(nullptr), _auth_tries(0), _authenticated(false), _ctx(nullptr), _cipher(nullptr) {}
+
+Client::Client(int fd): _fd(fd), _packetsize(0), _secure(false), _handshake(false), _key(nullptr), _auth_tries(0), _authenticated(false), _ctx(nullptr), _cipher(nullptr) {}
+
+Client::Client(int fd, unsigned char* key, const std::string& username, const std::string& password): _fd(fd), _packetsize(0), _secure(true), _handshake(false), _key(key), _username(username), _password(password), _auth_tries(0), _authenticated(false), _ctx(nullptr), _cipher(nullptr) {
+    if (!RAND_bytes(this->_iv, 16))
     {
-        if (!RAND_bytes(this->_iv, 16))
-        {
-            throw std::system_error(std::error_code(), "Could not generate iv");
-        }
-        if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
-        }
-        if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
-            EVP_CIPHER_CTX_free(_ctx);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
-        }
-    }   
+        throw std::system_error(std::error_code(), "Could not generate iv");
+    }
+    if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
+        throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
+    }
+    if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
+        EVP_CIPHER_CTX_free(_ctx);
+        throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
+    }
 }
 
-Client::Client(const Client & src): _fd(dup(src._fd)), _packetsize(src._packetsize), _secure(src._secure), _handshake(src._handshake), _key(src._key), _buffer(src._buffer), _encrypted_buffer(src._encrypted_buffer) {
+Client::Client(const Client & src): _fd(dup(src._fd)), _packetsize(src._packetsize), _secure(src._secure), _handshake(src._handshake), _key(src._key), _username(src._username), _password(src._password), _auth_tries(src._auth_tries), _authenticated(src._authenticated), _buffer(src._buffer), _encrypted_buffer(src._encrypted_buffer) {
     memcpy(this->_iv, src._iv, 16);
     memcpy(this->_RSA_buf, src._RSA_buf, 1024);
     if (src._secure) {
@@ -43,11 +43,12 @@ Client::Client(const Client & src): _fd(dup(src._fd)), _packetsize(src._packetsi
         }
     }
 }
-Client::Client(Client && src): _fd(std::move(src._fd)), _packetsize(src._packetsize), _secure(src._secure), _handshake(src._handshake), _key(src._key), _buffer(std::move(src._buffer)), _encrypted_buffer(std::move(src._encrypted_buffer)), _ctx(src._ctx), _cipher(src._cipher) {
+Client::Client(Client && src): _fd(std::move(src._fd)), _packetsize(src._packetsize), _secure(src._secure), _handshake(src._handshake), _key(src._key), _username(std::move(src._username)), _password(std::move(src._password)), _auth_tries(src._auth_tries), _authenticated(src._authenticated), _buffer(std::move(src._buffer)), _encrypted_buffer(std::move(src._encrypted_buffer)), _ctx(src._ctx), _cipher(src._cipher) {
     memcpy(this->_iv, src._iv, 16);
     memcpy(this->_RSA_buf, src._RSA_buf, 1024);
     src._fd = 0;
     src._key = nullptr;
+    src._authenticated = false;
     src._ctx = nullptr;
     src._cipher = nullptr;
 }
@@ -74,6 +75,10 @@ Client & Client::operator=(const Client & rhs)
     this->_key = rhs._key;
     memcpy(this->_iv, rhs._iv, 16);
     memcpy(this->_RSA_buf, rhs._RSA_buf, 1024);
+    this->_username = rhs._username;
+    this->_password = rhs._password;
+    this->_auth_tries = rhs._auth_tries;
+    this->_authenticated = rhs._authenticated;
     if (rhs._secure) {
         if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
             throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
@@ -101,6 +106,11 @@ Client & Client::operator=(Client && rhs)
     rhs._key = nullptr;
     memcpy(this->_iv, rhs._iv, 16);
     memcpy(this->_RSA_buf, rhs._RSA_buf, 1024);
+    this->_username = rhs._username;
+    this->_password = rhs._password;
+    this->_auth_tries = rhs._auth_tries;
+    this->_authenticated = rhs._authenticated;
+    rhs._authenticated = false;
     this->_ctx = rhs._ctx;
     rhs._ctx = nullptr;
     this->_cipher = rhs._cipher;
@@ -200,6 +210,39 @@ Client::Return  Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
                 this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
                 return (this->sendKey());
             }
+            if (!this->_authenticated) {
+                this->_buffer.clear();
+                if (!this->decrypt())
+                    return Client::Return::KICK;
+                this->_auth_tries += 1;
+                if (this->_buffer != (this->_username + "\n" + this->_password + "\n")) {
+                    if (this->_auth_tries >= 3) {
+                        this->_send_buffer = "AUTH KO - TOO MANY TRIES\n";
+                    }
+                    else {
+                        this->_send_buffer = "AUTH KO\n";
+                    }
+                    if (!this->encrypt(reporter))
+                        return Client::Return::KICK;
+                    std::string header = "Length ";
+                    header += std::to_string(this->_send_buffer.size());
+                    header += "\n";
+                    this->_send_buffer.insert(this->_send_buffer.begin(), header.begin(), header.end());
+                    return Client::Return::SEND;
+                }
+                else {
+                    this->_buffer.clear();
+                    this->_authenticated = true;
+                    this->_send_buffer = "AUTH OK\n";
+                    if (!this->encrypt(reporter))
+                        return Client::Return::KICK;
+                    std::string header = "Length ";
+                    header += std::to_string(this->_send_buffer.size());
+                    header += "\n";
+                    this->_send_buffer.insert(this->_send_buffer.begin(), header.begin(), header.end());
+                    return Client::Return::SEND;
+                }
+            }
             if (!this->decrypt())
                 return Client::Return::KICK;
            // this->increaseIV();
@@ -291,6 +334,8 @@ Client::Return    Client::send(void) {
    }
    if (ret == this->_send_buffer.size()) {
        this->_send_buffer.clear();
+       if (this->_auth_tries >= 3 && !this->_authenticated)
+           return Client::Return::KICK;
        return Client::Return::OK;
    }
    this->_send_buffer.erase(0, ret);
@@ -352,6 +397,57 @@ bool    Client::decrypt(void) {
     if (rv <= 0) {
         return false;
     }
+    //EVP_CIPHER_CTX_reset(this->_ctx);
+    return true;
+}
+
+bool    Client::encrypt(std::shared_ptr<Tintin_reporter>& reporter) {
+    int outlen, tmplen;
+    unsigned char   nextiv[16];
+    size_t gcm_ivlen = 16;
+    unsigned char outbuf[PIPE_BUF + 128 + 16]; //maximum allowed size if PIPE_BUF, up to 128 bytes might be added during encryption (block size) and we need to add new iv
+    unsigned char outtag[16];
+    OSSL_PARAM params[2] = {OSSL_PARAM_END, OSSL_PARAM_END};
+
+    if (!RAND_bytes(nextiv, 16)) {
+        if (reporter->log("Could not generate next iv for client secure connection", ERROR) != Tintin_reporter::Return::OK) {}
+        return false;
+    }
+    this->_send_buffer.insert(this->_send_buffer.end(), nextiv, nextiv + 16);
+    params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
+
+    /*
+     * Initialise an encrypt operation with the cipher/mode, key, IV and
+     * IV length parameter.
+     */
+    if (!EVP_EncryptInit_ex2(_ctx, _cipher, _key, _iv, params)) {
+        if (reporter->log("Could not initialize encryption for client secure connection", ERROR) != Tintin_reporter::Return::OK) {}
+        return false;
+    }
+
+    /* Encrypt plaintext */
+    if (!EVP_EncryptUpdate(_ctx, outbuf, &outlen, reinterpret_cast<unsigned char*>(_send_buffer.data()), static_cast<int>(_send_buffer.size()))) {
+        if (reporter->log("Could not encrypt buffer for client secure connection", ERROR) != Tintin_reporter::Return::OK) {}
+        return false;
+    }
+
+    /* Finalise: note get no output for GCM */
+    if (!EVP_EncryptFinal_ex(_ctx, outbuf, &tmplen)) {
+        if (reporter->log("Could not finalize encryption for client secure connection", ERROR) != Tintin_reporter::Return::OK) {}
+        return false;
+    }
+
+    /* Get tag */
+    params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, outtag, 16);
+    if (!EVP_CIPHER_CTX_get_params(_ctx, params)) {
+        if (reporter->log("Could not get tag", ERROR) != Tintin_reporter::Return::OK) {}
+        return false;
+    }
+
+    /* Output tag */
+    this->_send_buffer.assign(outbuf, outbuf + outlen);
+    this->_send_buffer.insert(this->_send_buffer.end(), outtag, outtag + 16);
+    memcpy(this->_iv, nextiv, 16);
     //EVP_CIPHER_CTX_reset(this->_ctx);
     return true;
 }

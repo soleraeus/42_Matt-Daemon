@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:33:42 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/23 21:28:44 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/26 19:33:50 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,7 +52,7 @@ class Server
 		Server&	operator=(Server && rhs);
 
 		//Member functions
-		bool	create_server(Server::ServerType type);
+		bool	create_server(Server::ServerType type, const std::string& username, const std::string& password);
 		void	serve(void);
 	
 	private:
@@ -64,6 +64,8 @@ class Server
 		struct epoll_event					_events[5];
 		struct epoll_event					_init;
 		std::map<int, Client>				_clients;
+        std::string                         _username;
+        std::string                         _password;
 
 		//Private member functions
 		bool	epoll_add(int fd, uint32_t events);

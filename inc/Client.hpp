@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:17:35 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/24 21:37:39 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/26 21:11:29 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,7 +44,8 @@ class Client
         };
 
         Client(void);
-        Client(int fd, bool secure = false, unsigned char* key = NULL);
+        Client(int fd);
+        Client(int fd, unsigned char* key, const std::string& username, const std::string& password);
 
         Client(const Client & src);
         Client(Client && src);
@@ -66,6 +67,10 @@ class Client
         unsigned char       _RSA_buf[1024];
         unsigned char*      _key;
         unsigned char       _iv[16];
+        std::string         _username;
+        std::string         _password;
+        int                 _auth_tries; 
+        bool                _authenticated;
         char                _recv_buffer[PIPE_BUF + 1];
         std::string         _buffer;
         std::string         _send_buffer;
@@ -77,6 +82,7 @@ class Client
         Client::Return      flush(std::shared_ptr<Tintin_reporter>& reporter);
         Client::Return      sendKey(void);
         bool                decrypt(void);
+        bool                encrypt(std::shared_ptr<Tintin_reporter>& reporter);
         void                increaseIV(void);
 };
 
