@@ -10,7 +10,8 @@
 # include <system_error>
 # include <sys/epoll.h>
 # include <sys/types.h>
-
+# include <QByteArray>
+# include <QDebug>
 //Openssl
 # include <openssl/bio.h>
 # include <openssl/core_names.h>
@@ -30,8 +31,8 @@ class	SecuredClient {
 		SecuredClient& operator=(const SecuredClient& rhs);
 		SecuredClient& operator=(SecuredClient&& rhs);
 
-		std::string	encrypt(std::string buf);
-		bool		decryptAESKey(std::string buf);
+		QByteArray	encrypt(QByteArray buf);
+		bool		decryptAESKey(QByteArray buf);
 		std::string	encryptRSAKey(void);
 
 	private:

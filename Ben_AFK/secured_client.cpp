@@ -184,7 +184,7 @@ std::string SecuredClient::encryptRSAKey(void) {
 	return (buf);
 }
 
-bool SecuredClient::decryptAESKey(std::string buf) {
+bool SecuredClient::decryptAESKey(QByteArray buf) {
 		size_t	outlen;
 
 		EVP_PKEY_CTX*	 ctx = EVP_PKEY_CTX_new(this->_RSA_key, nullptr);
@@ -234,7 +234,7 @@ bool SecuredClient::decryptAESKey(std::string buf) {
 	return true;
 }
 
-std::string SecuredClient::encrypt(std::string buf) {
+QByteArray SecuredClient::encrypt(QByteArray buf) {
 	int outlen, tmplen;
 	unsigned char   nextiv[16];
 	size_t gcm_ivlen = 16;
@@ -242,7 +242,6 @@ std::string SecuredClient::encrypt(std::string buf) {
 	unsigned char outtag[16];
 	OSSL_PARAM params[2] = {OSSL_PARAM_END, OSSL_PARAM_END};
 
-	buf += '\n';
 	if (buf.size() > PIPE_BUF) {
 		std::cerr << "You cannot send more than " << PIPE_BUF << " bytes to Matt_daemon" << std::endl;
 		return nullptr;
@@ -250,7 +249,10 @@ std::string SecuredClient::encrypt(std::string buf) {
 	if (!RAND_bytes(nextiv, 16)) {
 		std::cerr << "Could not generate next iv" << std::endl;
 	}
-	buf.insert(buf.end(), nextiv, nextiv + 16);
+	qDebug() << buf;
+	qDebug() << "inserting next iv";
+	buf.insert(buf.size(), (char *)nextiv, 16);
+	qDebug() << buf;
 	params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
 
 	/*
@@ -282,8 +284,12 @@ std::string SecuredClient::encrypt(std::string buf) {
 	}
 
 	/* Output tag */
+	qDebug() << "Assigning outbuf";
 	buf.assign(outbuf, outbuf + outlen);
-	buf.insert(buf.end(), outtag, outtag + 16);
+	qDebug() << buf;
+	qDebug() << "inserting outtag";
+	buf.insert(buf.size(), (char *)outtag, 16);
+	qDebug() << buf;
 	memcpy(this->_iv, nextiv, 16);
 	//EVP_CIPHER_CTX_reset(this->_ctx);
 	return buf;
