@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:42:18 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/24 20:29:28 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/26 22:45:41 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,7 @@ Server::Server(void): _sockfd(0), _securesockfd(0), _epollfd(0), _reporter(nullp
 Server::Server(std::shared_ptr<Tintin_reporter>& reporter) noexcept: _sockfd(0), _securesockfd(0), _epollfd(0), _reporter(reporter) {}
 Server::Server(std::shared_ptr<Tintin_reporter>&& reporter) noexcept: _sockfd(0), _securesockfd(0), _epollfd(0), _reporter(std::move(reporter)) {}
 
-Server::Server(Server const & src): _sockfd(0), _securesockfd(0), _epollfd(0), _reporter(src._reporter), _clients(src._clients){
+Server::Server(Server const & src): _sockfd(0), _securesockfd(0), _epollfd(0), _reporter(src._reporter), _clients(src._clients), _username(src._username), _password(src._password) {
     memcpy(this->_key, src._key, 32);
     if (src._sockfd > 0)
         this->_sockfd = dup(src._sockfd);
@@ -36,7 +36,7 @@ Server::Server(Server const & src): _sockfd(0), _securesockfd(0), _epollfd(0), _
     }
 }
 
-Server::Server(Server && src): _sockfd(std::move(src._sockfd)), _securesockfd(std::move(src._securesockfd)), _epollfd(std::move(src._epollfd)), _reporter(std::move(src._reporter)), _clients(std::move(src._clients)){
+Server::Server(Server && src): _sockfd(std::move(src._sockfd)), _securesockfd(std::move(src._securesockfd)), _epollfd(std::move(src._epollfd)), _reporter(std::move(src._reporter)), _clients(std::move(src._clients)), _username(std::move(src._username)), _password(std::move(src._password)) {
     memcpy(this->_key, src._key, 32);
     src._sockfd = 0;
     src._securesockfd = 0;
@@ -71,6 +71,8 @@ Server & Server::operator=(Server const & rhs)
     this->_epollfd = rhs._epollfd ? dup(rhs._epollfd) : 0;
     this->_reporter = rhs._reporter;
     this->_clients = rhs._clients;
+    this->_username = rhs._username;
+    this->_password = rhs._password;
     return (*this);
 }
 
@@ -91,16 +93,21 @@ Server & Server::operator=(Server && rhs)
     this->_epollfd = std::move(rhs._epollfd);
     this->_reporter = std::move(rhs._reporter);
     this->_clients = std::move(rhs._clients);
+    this->_username = std::move(rhs._username);
+    this->_password = std::move(rhs._password);
     rhs._sockfd = 0;
     rhs._securesockfd = 0;
     rhs._epollfd = 0;
     return (*this);
 }
 
-bool    Server::create_server(Server::ServerType type)
+bool    Server::create_server(Server::ServerType type, const std::string& username, const std::string& password)
 {
     int                 opt = 1;
     struct sockaddr_in  address;
+
+    this->_username = username;
+    this->_password = password;
     switch (type)
     {
         case Server::ServerType::STANDARD : 
@@ -268,12 +275,12 @@ void    Server::serve(void)
     if (this->_epollfd <= 0 || (this->_sockfd <= 0 && this->_securesockfd <= 0))
         throw std::logic_error("Member function create_server needs to be called before serving");
     memset(this->_events, 0, sizeof(struct epoll_event) * 5);
-    if (this->_sockfd && !this->epoll_add(this->_sockfd, EPOLLIN))
+    if (this->_sockfd  > 0 && !this->epoll_add(this->_sockfd, EPOLLIN))
     {
         if (this->_reporter->log("Could not initialize epoll on socket", ERROR) != Tintin_reporter::Return::OK) {}
         return ;
     }
-    if (this->_securesockfd && !this->epoll_add(this->_securesockfd, EPOLLIN))
+    if (this->_securesockfd > 0 && !this->epoll_add(this->_securesockfd, EPOLLIN))
     {
         if (this->_reporter->log("Could not initialize epoll on socket", ERROR) != Tintin_reporter::Return::OK) {}
         return ;
@@ -359,7 +366,7 @@ void    Server::serve(void)
                     }
                     try 
                     {
-                        this->_clients.insert(std::pair<int, Client>(new_connection, Client(new_connection, true, this->_key)));
+                        this->_clients.insert(std::pair<int, Client>(new_connection, Client(new_connection, this->_key, this->_username, this->_password)));
                         this->epoll_add(new_connection, EPOLLIN);
                     }
                     catch (std::system_error const & e)

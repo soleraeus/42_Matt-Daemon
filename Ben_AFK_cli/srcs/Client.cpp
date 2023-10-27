@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/24 21:53:57 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/26 22:49:25 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -345,6 +345,8 @@ bool    Client::getPacketSize(void)
 
 
 int Client::run(void) {
+    bool        authenticated = false;
+    bool        pending = false;
     int         hasevent = 0;
     ssize_t     ret = 0;
 
@@ -368,13 +370,46 @@ int Client::run(void) {
         return 1;
     }
     while (true) {
-        if (!(_secure && !_handshake) && _buf.empty()) {
-            std::cout << "Ben_AFK > ";
-            std::getline(std::cin, _buf);
-            if (std::cin.eof()) {
-                std::cout << "Goodbye" << std::endl;
-                epoll_ctl(_epollfd, EPOLL_CTL_DEL, _sockfd, &_event);
-                return 0;
+        if (!(_secure && !_handshake) && _buf.empty() && !pending) {
+            if (_secure && !authenticated) {
+                std::string username;
+                std::string password;
+                std::cout << "Please authenticate in order to use Matt Daemon" << std::endl;
+                do {
+                    std::cout << "Username (between 5 and 128 characters): ";
+                    std::getline(std::cin, username);
+                    if (username.size() >= 5 && username.size() <= 128)
+                        break ;
+                    else
+                        std::cout << "Invalid username provided" << std::endl;
+                } while (!std::cin.eof());
+                if (std::cin.eof()) {
+                    std::cerr << std::endl << "No username provided, leaving Ben AFK" << std::endl;
+                    return 1;
+                }
+                do {
+                    std::cout << "Password (between 12 and 128 characters): ";
+                    std::getline(std::cin, password);
+                    if (password.size() >= 12 && password.size() <= 128)
+                        break ;
+                    else
+                        std::cout << "Invalid password provided" << std::endl;
+
+                } while (!std::cin.eof());
+                if (std::cin.eof()) {
+                    std::cerr << std::endl << "No password provided, leaving Ben AFK" << std::endl;
+                    return 1;
+                }
+                this->_buf = username + "\n" + password;
+            }
+            else {
+                std::cout << "Ben_AFK > ";
+                std::getline(std::cin, _buf);
+                if (std::cin.eof()) {
+                    std::cout << "Goodbye" << std::endl;
+                    epoll_ctl(_epollfd, EPOLL_CTL_DEL, _sockfd, &_event);
+                    return 0;
+                }
             }
         }
         hasevent = epoll_wait(_epollfd, &_event, 1, 1000*60*2);
@@ -429,6 +464,7 @@ int Client::run(void) {
                         if (this->_buf.size() >= this->_packetsize) {
                             if (!this->decryptAESKey())
                                 return 1;
+                            this->_buf.clear();
                             memset(&_event, 0, sizeof(_event));
                             _event.data.fd = _sockfd;
                             _event.events = EPOLLOUT;
@@ -436,6 +472,7 @@ int Client::run(void) {
                                 std::cerr << "Could not modify socket event in epoll" << std::endl;
                                 return 1;
                             }
+                            this->_packetsize = 0;
                         }
                     }
                 }
@@ -453,6 +490,50 @@ int Client::run(void) {
                 }
                 _buf.erase(_buf.begin(), _buf.begin() + ret);
             }
+            else if (_event.events & EPOLLIN) {
+                    this->_recv_len = recv(this->_sockfd, this->_recv_buffer, PIPE_BUF, MSG_DONTWAIT);
+                    if (_recv_len <= 0) {
+                        std::cerr << "Server disconnected" << std::endl;
+                        return 1;
+                    }
+                    this->_buf.insert(this->_buf.end(), this->_recv_buffer, this->_recv_buffer + this->_recv_len);
+                    if (!this->_packetsize && !this->getPacketSize()) {
+                        std::cerr << "Invalid packet received from server" << std::endl;
+                        return 1;
+                    }
+                    if (this->_packetsize) {
+                        if (this->_buf.size() >= this->_packetsize) {
+                            if (!this->decrypt())
+                                return 1;
+                            if (_secure && !authenticated) {
+                                if (this->_inbuf == "AUTH OK\n") {
+                                    authenticated = true;
+                                }
+                                else if (this->_inbuf == "AUTH KO\n") {
+                                    std::cerr << "Authentication failed" << std::endl;
+                                }
+                                else {
+                                    std::cerr << "Authentication failed too many times, quitting Ben AFK" << std::endl;
+                                    return 1;
+                                }
+                            }
+                            else {
+                                std::cout << this->_inbuf << std::endl;
+                            }
+                            this->_buf.clear();
+                            this->_inbuf.clear();
+                            this->_packetsize = 0;
+                            pending = false;
+                            memset(&_event, 0, sizeof(_event));
+                            _event.data.fd = _sockfd;
+                            _event.events = EPOLLOUT;
+                            if (epoll_ctl(_epollfd, EPOLL_CTL_MOD, _sockfd, &_event) == -1) {
+                                std::cerr << "Could not modify socket event in epoll" << std::endl;
+                                return 1;
+                            }
+                        }
+                    }
+            }
             else {
                 if (!this->encrypt())
                     return 1;
@@ -466,6 +547,16 @@ int Client::run(void) {
                     return 1;
                 }
                 _buf.erase(_buf.begin(), _buf.begin() + ret);
+                if (_buf.empty() && _secure && !authenticated) {
+                    memset(&_event, 0, sizeof(_event));
+                    _event.data.fd = _sockfd;
+                    _event.events = EPOLLIN;
+                    if (epoll_ctl(_epollfd, EPOLL_CTL_MOD, _sockfd, &_event) == -1) {
+                        std::cerr << "Could not modify socket event in epoll" << std::endl;
+                        return 1;
+                    }
+                    pending = true;
+                }
             }
         }
     }
@@ -538,6 +629,7 @@ bool    Client::encrypt(void) {
     }
     if (!RAND_bytes(nextiv, 16)) {
         std::cerr << "Could not generate next iv" << std::endl;
+        return false;
     }
     this->_buf.insert(this->_buf.end(), nextiv, nextiv + 16);
     params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
@@ -587,12 +679,14 @@ bool    Client::decrypt(void) {
         OSSL_PARAM_END, OSSL_PARAM_END
     };
 
-    if (_inbuf.size() < 16) {
-        std::cerr << "Tag not provided correctly" << std::endl;
+    //Get tag
+    if (this->_packetsize < 32) {
+        std::cerr << "Packet size too small" << std::endl;
         return false;
     }
-    tag.assign(_inbuf.end() - 16, _inbuf.end());
-    _inbuf.erase(_inbuf.end() - 16, _inbuf.end());
+    tag.assign(this->_buf.begin() + this->_packetsize - 16, this->_buf.begin() + this->_packetsize);
+
+    //Put data to decrypt in buffer
 
     params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
 
@@ -606,31 +700,35 @@ bool    Client::decrypt(void) {
     }
 
     /* Decrypt plaintext */
-    if (!EVP_DecryptUpdate(_ctx, outbuf, &outlen, reinterpret_cast<unsigned char*>(_inbuf.data()), static_cast<int>(_inbuf.size()))) {
-        std::cerr << "Could not decrypt string" << std::endl;
+    if (!EVP_DecryptUpdate(_ctx, outbuf, &outlen, reinterpret_cast<unsigned char*>(this->_buf.data()), static_cast<int>(this->_packetsize) - 16)) {
+        std::cerr << "Could not decrypt package" << std::endl;
         return false;
     }
-
 
     /* Set expected tag value. */
     params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, (void*)tag.data(), 16);
 
     if (!EVP_CIPHER_CTX_set_params(_ctx, params)) {
-        std::cerr << "Could not get params" << std::endl;
+        std::cerr << "Could not set expected tag" << std::endl;
         return false;
     }
 
-
+    if (outlen < 16) {
+        std::cerr << "Decrypted packet too small" << std::endl;
+        return false;
+    }
+    memcpy(this->_iv, outbuf + outlen - 16, 16);
+    this->_inbuf.assign(outbuf, outbuf + outlen - 16);
+    this->_buf.erase(this->_buf.begin(), this->_buf.begin() + this->_packetsize);
     /* Finalise: note get no output for GCM */
     rv = EVP_DecryptFinal_ex(_ctx, outbuf, &outlen);
-
 
     /*
      * Print out return value. If this is not successful authentication
      * failed and plaintext is not trustworthy.
      */
     if (rv <= 0) {
-        std::cerr << "Incorrect tag provided, data might have been corrupted" << std::endl;
+        std::cerr << "Tag authentication failed" << std::endl;
         return false;
     }
     //EVP_CIPHER_CTX_reset(this->_ctx);
