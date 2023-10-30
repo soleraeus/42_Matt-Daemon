@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:59:28 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/30 21:15:16 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/30 21:26:03 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -193,14 +193,17 @@ std::string	Tintin_reporter::get_time(void) const
 }
 
 Tintin_reporter::Return Tintin_reporter::send_logs(std::string & send_buffer) {
-    char    buf[4096];
+    char                    buf[PIPE_BUF + 1];
+    std::fstream::pos_type  cursor_pos = 0;
 
-    this->_logfile.seekg(-4096, std::ios_base::end);
+    cursor_pos = this->_logfile.tellg();
+    std::cerr << "Current position: " << cursor_pos << std::endl;
+    this->_logfile.seekg(cursor_pos > PIPE_BUF ? -PIPE_BUF : -cursor_pos, std::ios_base::end);
     if (!this->_logfile.good()) {
         std::cerr << "Could not move cursor" << std::endl;
         return Tintin_reporter::Return::SYSTEM_ERROR;
     }
-    this->_logfile.read(buf, 4096);
+    this->_logfile.read(buf, cursor_pos > PIPE_BUF ? PIPE_BUF : cursor_pos);
     if (!this->_logfile.good()) {
         std::cerr << "Could not read from logfile" << std::endl;
         return Tintin_reporter::Return::SYSTEM_ERROR;
