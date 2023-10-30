@@ -12,11 +12,13 @@ MainWindow::MainWindow(QWidget *parent)
 	secured_client = NULL;
     ui->textLog->setPlaceholderText("<LOG>");
     ui->lineChat->setPlaceholderText("write here");
+	ui->lineUsername_2->setPlaceholderText("username");
+	ui->linePassword_2->setPlaceholderText("password");
 
     connect(ui->buttonStandard, &QPushButton::clicked, this, &MainWindow::standard);
     connect(ui->buttonSecured, &QPushButton::clicked, this, &MainWindow::secured);
     connect(ui->tabWidget, &QTabWidget::currentChanged, this, &MainWindow::changeTab);
-    connect(ui->buttonSubmit, &QPushButton::clicked, this, &MainWindow::tryLogging);
+    connect(ui->buttonSubmit_2, &QPushButton::clicked, this, &MainWindow::tryLogging);
 }
 
 MainWindow::~MainWindow()
@@ -67,7 +69,7 @@ enum HandshakeState {
 	Done,
 };
 
-bool getPacketSize(QByteArray & buf)
+int getPacketSize(QByteArray & buf)
 {
     size_t		pos = 0;
 
@@ -78,49 +80,49 @@ bool getPacketSize(QByteArray & buf)
         {
             if (i < 8 || i > 12) {
 				qDebug() << "i is not between 8 and 12";
-                return false;
+                return -1;
 			}
             if (memcmp((void *)"Length ",(void *)&buf[0], 7)) {
 				qDebug() << "buf doesnt start with \"Length \"";
-                return false;
+                return -1;
 			}
             pos = i;
             if (buf[i - 1] == '\r')
                 pos = i - 1;
             if (pos == 7) {
 				qDebug() << "Invalid position (?)";
-                return false;
+                return -1;
 			}
             buf[pos] = '\0';
             for (size_t j = 7; j < pos; ++j)
             {
                 if (buf[j] < '0' || buf[j] > '9') {
 					qDebug() << "Non numerical in length";
-                    return false;
+                    return -1;
 				}
             }
             packetsize = std::atoi(&buf[7]);
             if (packetsize > PIPE_BUF + 128 + 16 + 16) {
 				qDebug() << "Size too large";
-                return false;
+                return -1;
 			}
             buf.erase(buf.begin(), buf.begin() + i + 1);
 			qDebug() << "Post erase";
 			qDebug() << buf;
-            return true;
+            return packetsize;
         }
         if ((buf[i] < ' ' || buf[i] > 'z')
                         && buf[i] != '\r') {
 			qDebug() << "idk but error";
-            return false;
+            return -1;
         }
     }
 	qDebug() << "buf.size() = " << buf.size();
     if (buf.size() > 12) {
 		qDebug() << "Size too big without \\n";
-        return false;
+        return -1;
 	}
-    return true;
+    return packetsize;
 }
 
 void MainWindow::Handshake(void) {
@@ -143,7 +145,8 @@ void MainWindow::Handshake(void) {
 				qDebug() << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
 				qDebug() << buf;
 				qDebug() << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
-				if (getPacketSize(buf) == false) {
+				int packetSize = getPacketSize(buf);
+				if (packetSize == -1) {
 					qDebug() << "Invalid packet ...";
 				} else {
 					qDebug() << "got packet size...";
@@ -175,7 +178,7 @@ void MainWindow::Handshake(void) {
 		qDebug() << "Calling Handshake again";
 		QMetaObject::invokeMethod(this, "Handshake");
 	} else {
-        ui->stackedWidget->setCurrentIndex(PageIndex::Chat);
+        ui->stackedWidget->setCurrentIndex(PageIndex::Auth);
 	}
 }
 
@@ -248,6 +251,79 @@ void MainWindow::sendLine() {
     ui->lineChat->clear();
 }
 
+enum AuthState {
+	SendInfo,
+	WaitResult,
+	Authentified,
+};
+
+void MainWindow::Auth() {
+	static int status = AuthState::SendInfo;
+
+	qDebug() << "MainWindow::Auth()";
+	qDebug() << "status = " << status;
+	switch (status) {
+		case SendInfo : {
+			QByteArray msg = ui->lineUsername_2->text().toUtf8() + "\n" + ui->linePassword_2->text().toUtf8() + "\n";
+			msg = secured_client->encrypt(msg);
+			std::string header = "Length ";
+			header += std::to_string(msg.size());
+			header += "\n";
+			msg.insert(0, header.data(), header.size());
+			qDebug() << "Sending info";
+			socket->write(msg);
+			status = WaitResult;
+			break;
+		}
+
+		case WaitResult : {
+			qDebug() << "Waiting for result";
+			if (socket->waitForReadyRead(1000)) {
+				qDebug() << "Got a response from server";
+				QByteArray buf = socket->readAll();
+				int packetSize = getPacketSize(buf);
+				if (packetSize == -1) {
+					qDebug() << "Invalid packet ...";
+				}
+				buf = secured_client->decrypt(buf, packetSize);
+				qDebug() << buf;
+				if (buf == "AUTH KO\n") {
+					qDebug() << "Auth KO ...";
+					ui->stackedWidget->setCurrentIndex(PageIndex::Auth);
+					status = SendInfo;
+					return ;
+				} else if (buf == "AUTH KO - TOO MANY TRIES\n") {
+					qDebug() << "Auth kicked ...";
+					ui->stackedWidget->setCurrentIndex(PageIndex::Choice);
+					status = SendInfo;
+					if (socket)
+						socket->disconnectFromHost();
+					return ;
+				} else if (buf == "AUTH OK\n") {
+					this->isLogged = true;
+					status = Authentified;
+				}
+			} else {
+				qDebug() << "Timed out ...";
+				ui->stackedWidget->setCurrentIndex(PageIndex::Choice);
+				status = SendInfo;
+				if (socket)
+					socket->disconnectFromHost();
+				return ;
+			}
+			break;
+		}
+	}
+
+	if (status != Authentified) {
+		qDebug() << "Calling Auth again";
+		QMetaObject::invokeMethod(this, "Auth");
+	} else {
+		ui->stackedWidget->setCurrentIndex(PageIndex::Chat);
+	}
+}
+
 void MainWindow::tryLogging() {
     // try logging, while waiting for response send to PageIndex::Loading, put a timeout and if you do log set isLogged to true;
+	this->Auth();
 }

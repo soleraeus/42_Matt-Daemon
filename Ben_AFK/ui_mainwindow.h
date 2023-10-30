@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'mainwindow.ui'
 **
-** Created by: Qt User Interface Compiler version 6.6.0
+** Created by: Qt User Interface Compiler version 6.5.2
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -39,6 +39,15 @@ public:
     QPushButton *buttonStandard;
     QPushButton *buttonSecured;
     QLineEdit *lineIp;
+    QWidget *pageAuth;
+    QGridLayout *gridLayout_11;
+    QWidget *widget;
+    QGridLayout *gridLayout_10;
+    QGroupBox *groupBox_2;
+    QGridLayout *gridLayout_9;
+    QLineEdit *lineUsername_2;
+    QLineEdit *linePassword_2;
+    QPushButton *buttonSubmit_2;
     QWidget *pageLoading;
     QGridLayout *gridLayout_5;
     QLabel *labelMovie;
@@ -55,19 +64,12 @@ public:
     QWidget *page;
     QGridLayout *gridLayout_6;
     QTextBrowser *textLog;
-    QWidget *page_2;
-    QGridLayout *gridLayout_8;
-    QGroupBox *groupBox;
-    QGridLayout *gridLayout_7;
-    QLineEdit *lineUsername;
-    QLineEdit *linePassword;
-    QPushButton *buttonSubmit;
 
     void setupUi(QMainWindow *MainWindow)
     {
         if (MainWindow->objectName().isEmpty())
             MainWindow->setObjectName("MainWindow");
-        MainWindow->resize(361, 266);
+        MainWindow->resize(377, 275);
         centralwidget = new QWidget(MainWindow);
         centralwidget->setObjectName("centralwidget");
         gridLayout = new QGridLayout(centralwidget);
@@ -104,6 +106,42 @@ public:
         gridLayout_4->addWidget(lineIp, 0, 0, 1, 1);
 
         stackedWidget->addWidget(pageChoose);
+        pageAuth = new QWidget();
+        pageAuth->setObjectName("pageAuth");
+        pageAuth->setMinimumSize(QSize(359, 0));
+        pageAuth->setMaximumSize(QSize(359, 16777215));
+        gridLayout_11 = new QGridLayout(pageAuth);
+        gridLayout_11->setObjectName("gridLayout_11");
+        widget = new QWidget(pageAuth);
+        widget->setObjectName("widget");
+        gridLayout_10 = new QGridLayout(widget);
+        gridLayout_10->setObjectName("gridLayout_10");
+        groupBox_2 = new QGroupBox(widget);
+        groupBox_2->setObjectName("groupBox_2");
+        gridLayout_9 = new QGridLayout(groupBox_2);
+        gridLayout_9->setObjectName("gridLayout_9");
+        lineUsername_2 = new QLineEdit(groupBox_2);
+        lineUsername_2->setObjectName("lineUsername_2");
+
+        gridLayout_9->addWidget(lineUsername_2, 0, 0, 1, 1);
+
+        linePassword_2 = new QLineEdit(groupBox_2);
+        linePassword_2->setObjectName("linePassword_2");
+
+        gridLayout_9->addWidget(linePassword_2, 1, 0, 1, 1);
+
+
+        gridLayout_10->addWidget(groupBox_2, 0, 0, 1, 1);
+
+        buttonSubmit_2 = new QPushButton(widget);
+        buttonSubmit_2->setObjectName("buttonSubmit_2");
+
+        gridLayout_10->addWidget(buttonSubmit_2, 0, 1, 1, 1);
+
+
+        gridLayout_11->addWidget(widget, 0, 0, 1, 1);
+
+        stackedWidget->addWidget(pageAuth);
         pageLoading = new QWidget();
         pageLoading->setObjectName("pageLoading");
         gridLayout_5 = new QGridLayout(pageLoading);
@@ -151,33 +189,6 @@ public:
         gridLayout_6->addWidget(textLog, 0, 0, 1, 1);
 
         stackedWidgetLog->addWidget(page);
-        page_2 = new QWidget();
-        page_2->setObjectName("page_2");
-        gridLayout_8 = new QGridLayout(page_2);
-        gridLayout_8->setObjectName("gridLayout_8");
-        groupBox = new QGroupBox(page_2);
-        groupBox->setObjectName("groupBox");
-        gridLayout_7 = new QGridLayout(groupBox);
-        gridLayout_7->setObjectName("gridLayout_7");
-        lineUsername = new QLineEdit(groupBox);
-        lineUsername->setObjectName("lineUsername");
-
-        gridLayout_7->addWidget(lineUsername, 0, 0, 1, 1);
-
-        linePassword = new QLineEdit(groupBox);
-        linePassword->setObjectName("linePassword");
-
-        gridLayout_7->addWidget(linePassword, 1, 0, 1, 1);
-
-
-        gridLayout_8->addWidget(groupBox, 0, 0, 1, 1);
-
-        buttonSubmit = new QPushButton(page_2);
-        buttonSubmit->setObjectName("buttonSubmit");
-
-        gridLayout_8->addWidget(buttonSubmit, 0, 1, 1, 1);
-
-        stackedWidgetLog->addWidget(page_2);
 
         gridLayout_2->addWidget(stackedWidgetLog, 0, 0, 1, 1);
 
@@ -195,7 +206,7 @@ public:
 
         stackedWidget->setCurrentIndex(0);
         tabWidget->setCurrentIndex(0);
-        stackedWidgetLog->setCurrentIndex(1);
+        stackedWidgetLog->setCurrentIndex(0);
 
 
         QMetaObject::connectSlotsByName(MainWindow);
@@ -207,6 +218,8 @@ public:
         buttonStandard->setText(QCoreApplication::translate("MainWindow", "standard", nullptr));
         buttonSecured->setText(QCoreApplication::translate("MainWindow", "secured", nullptr));
         lineIp->setText(QCoreApplication::translate("MainWindow", "localhost", nullptr));
+        groupBox_2->setTitle(QCoreApplication::translate("MainWindow", "login", nullptr));
+        buttonSubmit_2->setText(QCoreApplication::translate("MainWindow", "submit", nullptr));
         labelMovie->setText(QCoreApplication::translate("MainWindow", "                                                         LOADING", nullptr));
         buttonSend->setText(QCoreApplication::translate("MainWindow", "send", nullptr));
         tabWidget->setTabText(tabWidget->indexOf(tabChat), QCoreApplication::translate("MainWindow", "chat", nullptr));
@@ -216,10 +229,8 @@ public:
 "hr { height: 1px; border-width: 0; }\n"
 "li.unchecked::marker { content: \"\\2610\"; }\n"
 "li.checked::marker { content: \"\\2612\"; }\n"
-"</style></head><body style=\" font-family:'Cantarell'; font-size:10pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>", nullptr));
-        groupBox->setTitle(QCoreApplication::translate("MainWindow", "login", nullptr));
-        buttonSubmit->setText(QCoreApplication::translate("MainWindow", "submit", nullptr));
+"</style></head><body style=\" font-family:'Cantarell'; font-size:11pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:10pt;\"><br /></p></body></html>", nullptr));
         tabWidget->setTabText(tabWidget->indexOf(tabLog), QCoreApplication::translate("MainWindow", "log", nullptr));
     } // retranslateUi
 

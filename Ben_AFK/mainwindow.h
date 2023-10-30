@@ -14,6 +14,7 @@ QT_END_NAMESPACE
 
 enum PageIndex {
     Choice,
+    Auth,
     Loading,
     Chat
 };
@@ -27,6 +28,7 @@ public:
     ~MainWindow();
     void createSocket();
 	Q_INVOKABLE void Handshake(void);
+	Q_INVOKABLE void Auth(void);
 
 private slots:
     void standard();

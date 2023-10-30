@@ -31,6 +31,7 @@ class	SecuredClient {
 		SecuredClient& operator=(const SecuredClient& rhs);
 		SecuredClient& operator=(SecuredClient&& rhs);
 
+		QByteArray	decrypt(QByteArray buf, int packetsize);
 		QByteArray	encrypt(QByteArray buf);
 		bool		decryptAESKey(QByteArray buf);
 		std::string	encryptRSAKey(void);

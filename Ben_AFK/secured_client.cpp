@@ -294,3 +294,68 @@ QByteArray SecuredClient::encrypt(QByteArray buf) {
 	//EVP_CIPHER_CTX_reset(this->_ctx);
 	return buf;
 }
+
+QByteArray SecuredClient::decrypt(QByteArray buf, int packetsize) {
+    std::string tag;
+    int outlen, rv;
+    size_t gcm_ivlen = 16;
+    unsigned char outbuf[PIPE_BUF + 128 + 16 + 1];
+    OSSL_PARAM params[2] = {
+        OSSL_PARAM_END, OSSL_PARAM_END
+    };
+
+    //Get tag
+    if (packetsize < 32) {
+        std::cerr << "Packet size too small" << std::endl;
+        return nullptr;
+    }
+    tag.assign(buf.begin() + packetsize - 16, buf.begin() + packetsize);
+
+    //Put data to decrypt in buffer
+
+    params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
+
+    /*
+     * Initialise an encrypt operation with the cipher/mode, key, IV and
+     * IV length parameter.
+     */
+    if (!EVP_DecryptInit_ex2(_ctx, _cipher, _key, _iv, params)) {
+        std::cerr << "Could not init decryption" << std::endl;
+        return nullptr;
+    }
+
+    /* Decrypt plaintext */
+    if (!EVP_DecryptUpdate(_ctx, outbuf, &outlen, reinterpret_cast<unsigned char*>(buf.data()), static_cast<int>(packetsize) - 16)) {
+        std::cerr << "Could not decrypt package" << std::endl;
+        return nullptr;
+    }
+
+    /* Set expected tag value. */
+    params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, (void*)tag.data(), 16);
+
+    if (!EVP_CIPHER_CTX_set_params(_ctx, params)) {
+        std::cerr << "Could not set expected tag" << std::endl;
+        return nullptr;
+    }
+
+    if (outlen < 16) {
+        std::cerr << "Decrypted packet too small" << std::endl;
+        return nullptr;
+    }
+    memcpy(this->_iv, outbuf + outlen - 16, 16);
+    buf.assign(outbuf, outbuf + outlen - 16);
+    /* Finalise: note get no output for GCM */
+    rv = EVP_DecryptFinal_ex(_ctx, outbuf, &outlen);
+
+    /*
+     * Print out return value. If this is not successful authentication
+     * failed and plaintext is not trustworthy.
+     */
+    if (rv <= 0) {
+        std::cerr << "Tag authentication failed" << std::endl;
+        return nullptr;
+    }
+    //EVP_CIPHER_CTX_reset(this->_ctx);
+    return buf;
+}
+
