@@ -535,6 +535,7 @@ int Client::run(void) {
                     }
             }
             else {
+                //bool    logs = this->_buf == "log?";
                 if (!this->encrypt())
                     return 1;
                 std::string header = "Length ";
@@ -557,6 +558,7 @@ int Client::run(void) {
                     }
                     pending = true;
                 }
+                //else if (_buf.empty() && _secure && authenticated
             }
         }
     }
