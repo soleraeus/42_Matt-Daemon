@@ -6,12 +6,12 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:59:28 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/30 21:26:03 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/30 21:31:05 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Tintin_reporter.hpp"
-
+#include <climits>
 #include <filesystem>
 
 Tintin_reporter::Tintin_reporter(void) noexcept {}
@@ -197,13 +197,17 @@ Tintin_reporter::Return Tintin_reporter::send_logs(std::string & send_buffer) {
     std::fstream::pos_type  cursor_pos = 0;
 
     cursor_pos = this->_logfile.tellg();
+    if (cursor_pos == -1) {
+        std::cerr << "Could not get position of cursor" << std::endl;
+        return Tintin_reporter::Return::SYSTEM_ERROR;
+    }
     std::cerr << "Current position: " << cursor_pos << std::endl;
     this->_logfile.seekg(cursor_pos > PIPE_BUF ? -PIPE_BUF : -cursor_pos, std::ios_base::end);
     if (!this->_logfile.good()) {
         std::cerr << "Could not move cursor" << std::endl;
         return Tintin_reporter::Return::SYSTEM_ERROR;
     }
-    this->_logfile.read(buf, cursor_pos > PIPE_BUF ? PIPE_BUF : cursor_pos);
+    this->_logfile.read(buf, cursor_pos > PIPE_BUF ? PIPE_BUF : static_cast<int>(cursor_pos));
     if (!this->_logfile.good()) {
         std::cerr << "Could not read from logfile" << std::endl;
         return Tintin_reporter::Return::SYSTEM_ERROR;
