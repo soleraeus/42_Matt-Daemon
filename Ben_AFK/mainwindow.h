@@ -39,6 +39,7 @@ private slots:
     void timeout();
     void sendLine();
     void tryLogging();
+	void goToPassword();
 
 private:
     Ui::MainWindow  *ui;

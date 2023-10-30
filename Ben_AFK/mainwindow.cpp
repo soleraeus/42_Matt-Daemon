@@ -18,7 +18,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->buttonStandard, &QPushButton::clicked, this, &MainWindow::standard);
     connect(ui->buttonSecured, &QPushButton::clicked, this, &MainWindow::secured);
     connect(ui->tabWidget, &QTabWidget::currentChanged, this, &MainWindow::changeTab);
+	connect(ui->lineUsername_2, &QLineEdit::returnPressed, this, &MainWindow::goToPassword);
     connect(ui->buttonSubmit_2, &QPushButton::clicked, this, &MainWindow::tryLogging);
+    connect(ui->linePassword_2, &QLineEdit::returnPressed, this, &MainWindow::tryLogging);
 }
 
 MainWindow::~MainWindow()
@@ -27,6 +29,10 @@ MainWindow::~MainWindow()
         disconnect(socket, &QTcpSocket::disconnected, this, &MainWindow::onDisconnect);
     }
     delete ui;
+}
+
+void MainWindow::goToPassword() {
+	this->ui->linePassword_2->setFocus();
 }
 
 void MainWindow::standard() {
@@ -266,6 +272,9 @@ void MainWindow::Auth() {
 	switch (status) {
 		case SendInfo : {
 			QByteArray msg = ui->lineUsername_2->text().toUtf8() + "\n" + ui->linePassword_2->text().toUtf8() + "\n";
+			ui->lineUsername_2->setText("");
+			ui->linePassword_2->setText("");
+			ui->lineUsername_2->setFocus();
 			msg = secured_client->encrypt(msg);
 			std::string header = "Length ";
 			header += std::to_string(msg.size());
