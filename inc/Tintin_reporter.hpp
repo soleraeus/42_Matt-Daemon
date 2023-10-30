@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:21 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/06 21:01:27 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/30 20:56:54 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,6 +49,7 @@ class Tintin_reporter
 		[[nodiscard]] Tintin_reporter::Return	client_log(std::string && str);
 		[[nodiscard]] Tintin_reporter::Return	log(std::string && str, enum Loglevel level);
 		[[nodiscard]] Tintin_reporter::Return	log(std::string const & str, enum Loglevel level);
+        [[nodiscard]] Tintin_reporter::Return   send_logs(std::string & send_buffer);
 	
 	private:
 		std::string			get_time(void) const;

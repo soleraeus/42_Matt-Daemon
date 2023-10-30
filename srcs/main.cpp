@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/26 19:29:18 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/30 20:31:45 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -60,8 +60,10 @@ bool	install_signal_handler(void)
 void	exit_procedure(std::shared_ptr<Tintin_reporter>& reporter, int & lock)
 {
 	if (reporter->log("Quitting.", INFO) != Tintin_reporter::Return::OK) {} 
-	if (lock > 0)
+	if (lock > 0) {
 		close(lock);
+        unlink("/var/lock/matt_daemon.lock");
+    }
 }
 
 int	main(int ac, char **av)
