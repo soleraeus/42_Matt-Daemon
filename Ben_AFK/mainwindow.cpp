@@ -49,12 +49,9 @@ void MainWindow::changeTab(int index) {
         // probably nothing to do here
         qDebug() << "tab chat";
     } else {
-        if (isSecure) {
-            if (isLogged) {
-                ui->stackedWidgetLog->setCurrentIndex(0);
-            } else {
-                ui->stackedWidgetLog->setCurrentIndex(1);
-            }
+        if (isSecure && isLogged) {
+			ui->stackedWidgetLog->setCurrentIndex(0);
+			this->GetLog();
         } else {
             qDebug() << "you are not allowed to see !";
         }
@@ -148,6 +145,11 @@ void MainWindow::Handshake(void) {
 				int packetSize = getPacketSize(buf);
 				if (packetSize == -1) {
 					qDebug() << "Invalid packet ...";
+					ui->stackedWidget->setCurrentIndex(PageIndex::Choice);
+					status = SendRSA;
+					if (socket)
+						socket->disconnectFromHost();
+					return ;
 				} else {
 					qDebug() << "got packet size...";
 				}
@@ -285,6 +287,11 @@ void MainWindow::Auth() {
 				int packetSize = getPacketSize(buf);
 				if (packetSize == -1) {
 					qDebug() << "Invalid packet ...";
+					ui->stackedWidget->setCurrentIndex(PageIndex::Choice);
+					status = SendInfo;
+					if (socket)
+						socket->disconnectFromHost();
+					return ;
 				}
 				buf = secured_client->decrypt(buf, packetSize);
 				qDebug() << buf;
@@ -328,4 +335,64 @@ void MainWindow::Auth() {
 void MainWindow::tryLogging() {
     // try logging, while waiting for response send to PageIndex::Loading, put a timeout and if you do log set isLogged to true;
 	this->Auth();
+}
+
+enum LogState {
+	RequestLog,
+	WaitLog,
+	PrintLog
+};
+
+void MainWindow::GetLog(void) {
+	static int status = LogState::RequestLog;
+
+	switch (status) {
+		case RequestLog : {
+			qDebug() << "Asking for log";
+			QByteArray msg = "log?";
+			msg = secured_client->encrypt(msg);
+			std::string header = "Length ";
+			header += std::to_string(msg.size());
+			header += "\n";
+			msg.insert(0, header.data(), header.size());
+			socket->write(msg);
+			status = WaitLog;
+			break;
+		}
+
+		case WaitLog : {
+			qDebug() << "Waiting for log";
+			if (socket->waitForReadyRead(1000)) {
+				qDebug() << "Got a response from server";
+				QByteArray buf = socket->readAll();
+				int packetSize = getPacketSize(buf);
+				if (packetSize == -1) {
+					qDebug() << "Invalid packet ...";
+					ui->stackedWidget->setCurrentIndex(PageIndex::Choice);
+					status = RequestLog;
+					if (socket)
+						socket->disconnectFromHost();
+					return ;
+				}
+				buf = secured_client->decrypt(buf, packetSize);
+				qDebug() << buf;
+				ui->textLog->setText(buf);
+				status = PrintLog;
+			} else {
+				qDebug() << "Timed out ...";
+				ui->stackedWidget->setCurrentIndex(PageIndex::Choice);
+				status = RequestLog;
+				if (socket)
+					socket->disconnectFromHost();
+				return ;
+			}
+			break;
+		}
+	}
+	if (status != PrintLog) {
+		qDebug() << "Calling GetLog again";
+		QMetaObject::invokeMethod(this, "GetLog");
+	} else {
+		status = RequestLog;
+	}
 }

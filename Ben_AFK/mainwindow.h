@@ -29,6 +29,7 @@ public:
     void createSocket();
 	Q_INVOKABLE void Handshake(void);
 	Q_INVOKABLE void Auth(void);
+	Q_INVOKABLE void GetLog(void);
 
 private slots:
     void standard();

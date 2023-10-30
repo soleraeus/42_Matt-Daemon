@@ -1319,6 +1319,7 @@ mainwindow.o: mainwindow.cpp mainwindow.h \
 		../../Qt/6.6.0/gcc_64/include/QtWidgets/QPushButton \
 		../../Qt/6.6.0/gcc_64/include/QtWidgets/qpushbutton.h \
 		../../Qt/6.6.0/gcc_64/include/QtWidgets/qabstractbutton.h \
+		../../Qt/6.6.0/gcc_64/include/QtWidgets/QSpacerItem \
 		../../Qt/6.6.0/gcc_64/include/QtWidgets/QStackedWidget \
 		../../Qt/6.6.0/gcc_64/include/QtWidgets/qstackedwidget.h \
 		../../Qt/6.6.0/gcc_64/include/QtWidgets/QTabWidget \
