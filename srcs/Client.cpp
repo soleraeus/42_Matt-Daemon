@@ -187,10 +187,8 @@ Client::Return  Client::flush(std::shared_ptr<Tintin_reporter>& reporter)
             if (reporter->log("Client requested logs", LOG) != Tintin_reporter::Return::OK)
                 return Client::Return::QUIT;
             if (reporter->send_logs(this->_send_buffer) != Tintin_reporter::Return::OK) {
-                std::cerr << "Could not prepare logs for sending to client" << std::endl;
                 return Client::Return::QUIT;
             }
-            std::cerr << "Logs to send\n" << this->_send_buffer << std::endl;
             this->_buffer.clear();
             if (!this->encrypt(reporter)) {
                 return Client::Return::KICK;

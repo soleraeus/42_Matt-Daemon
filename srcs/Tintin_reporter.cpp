@@ -22,7 +22,7 @@ Tintin_reporter::Tintin_reporter(std::string const & filepath): _filepath(filepa
 		throw std::invalid_argument("Could not open logfile");
 }
 
-Tintin_reporter::Tintin_reporter(std::string&& filepath): _filepath(filepath), _logfile(std::move(filepath), std::ios::out | std::ios::app)
+Tintin_reporter::Tintin_reporter(std::string&& filepath): _filepath(filepath), _logfile(std::move(filepath), std::ios::out | std::ios::in | std::ios::app)
 {
 	if (!this->_logfile.good())
 		throw std::invalid_argument("Could not open logfile");
@@ -34,11 +34,11 @@ Tintin_reporter::Tintin_reporter(Tintin_reporter const & src): _filepath(src._fi
 	{
 		if (!this->_filepath.length())
 			return;
-		this->_logfile.open(this->_filepath, std::ios::out | std::ios::app);
+		this->_logfile.open(this->_filepath, std::ios::out | std::ios::in | std::ios::app);
 	}
 	else if (!this->_logfile.good())
 	{
-		this->_logfile.open(this->_filepath, std::ios::out | std::ios::app);
+		this->_logfile.open(this->_filepath, std::ios::out | std::ios::in | std::ios::app);
 	}
 	if (!this->_logfile.good())
 		throw std::invalid_argument("Logfile is an invalid state or could not be opened");
@@ -50,11 +50,11 @@ Tintin_reporter::Tintin_reporter(Tintin_reporter && src): _filepath(std::move(sr
 	{
 		if (!this->_filepath.length())
 			return;
-		this->_logfile.open(this->_filepath, std::ios::out | std::ios::app);
+		this->_logfile.open(this->_filepath, std::ios::out | std::ios::in | std::ios::app);
 	}
 	else if (!this->_logfile.good())
 	{
-		this->_logfile.open(this->_filepath, std::ios::out | std::ios::app);
+		this->_logfile.open(this->_filepath, std::ios::out | std::ios::in | std::ios::app);
 	}
 	if (!this->_logfile.good())
 		throw std::invalid_argument("Logfile is an invalid state or could not be opened");
@@ -70,7 +70,7 @@ Tintin_reporter& Tintin_reporter::operator=(Tintin_reporter const & rhs)
 		this->_logfile.close();
 	this->_filepath = rhs._filepath;
 	if (this->_filepath.length())
-		this->_logfile.open(this->_filepath, std::ios::out | std::ios::app);
+		this->_logfile.open(this->_filepath, std::ios::out | std::ios::in | std::ios::app);
 	else
 		return (*this);
 	if (!this->_logfile.good())
@@ -90,11 +90,11 @@ Tintin_reporter& Tintin_reporter::operator=(Tintin_reporter && rhs)
 	{
 		if (!this->_filepath.length())
 			return (*this);
-		this->_logfile.open(this->_filepath, std::ios::out | std::ios::app);
+		this->_logfile.open(this->_filepath, std::ios::out | std::ios::in | std::ios::app);
 	}
 	else if (!this->_logfile.good())
 	{
-		this->_logfile.open(this->_filepath, std::ios::out | std::ios::app);
+		this->_logfile.open(this->_filepath, std::ios::out | std::ios::in | std::ios::app);
 	}
 	if (!this->_logfile.good())
 		throw std::invalid_argument("Logfile is an invalid state or could not be opened");
@@ -198,22 +198,31 @@ Tintin_reporter::Return Tintin_reporter::send_logs(std::string & send_buffer) {
 
     cursor_pos = this->_logfile.tellg();
     if (cursor_pos == -1) {
-        std::cerr << "Could not get position of cursor" << std::endl;
         return Tintin_reporter::Return::SYSTEM_ERROR;
     }
-    std::cerr << "Current position: " << cursor_pos << std::endl;
-    this->_logfile.seekg(cursor_pos > PIPE_BUF ? -PIPE_BUF : -cursor_pos, std::ios_base::end);
-    if (!this->_logfile.good()) {
-        std::cerr << "Could not move cursor" << std::endl;
+    if (cursor_pos > PIPE_BUF) {
+        this->_logfile.seekg(-PIPE_BUF, std::ios_base::end);
+        if (!this->_logfile.good()) {
+            return Tintin_reporter::Return::SYSTEM_ERROR;
+        }
+        this->_logfile.read(buf, PIPE_BUF);
+    }
+    else {
+        this->_logfile.seekg(0, std::ios_base::beg);
+        if (!this->_logfile.good()) {
+            return Tintin_reporter::Return::SYSTEM_ERROR;
+        }
+        this->_logfile.read(buf, static_cast<int>(cursor_pos));
+    }
+    if (this->_logfile.fail()) {
         return Tintin_reporter::Return::SYSTEM_ERROR;
     }
-    this->_logfile.read(buf, cursor_pos > PIPE_BUF ? PIPE_BUF : static_cast<int>(cursor_pos));
-    if (this->_logfile.fail() || this->_logfile.bad()) {
-        std::cerr << "Could not read from logfile" << std::endl;
+    else if (this->_logfile.bad()) {
         return Tintin_reporter::Return::SYSTEM_ERROR;
     }
     buf[this->_logfile.gcount()] = '\0';
     send_buffer = buf;
-    send_buffer.erase(0, send_buffer.find('\n') + 1);
+    if (cursor_pos > PIPE_BUF)
+        send_buffer.erase(0, send_buffer.find('\n') + 1);
     return Tintin_reporter::Return::OK;
 }

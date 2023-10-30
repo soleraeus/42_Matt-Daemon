@@ -345,6 +345,8 @@ bool    Client::getPacketSize(void)
 
 
 int Client::run(void) {
+    bool        logs = false;
+    bool        quit = false;
     bool        authenticated = false;
     bool        pending = false;
     int         hasevent = 0;
@@ -488,6 +490,10 @@ int Client::run(void) {
                     std::cerr << "Could not send packet to server" << std::endl;
                     return 1;
                 }
+                if (this->_buf == "quit\n") {
+                    std::cout << "Goodbye" << std::endl;
+                    return 0;
+                }
                 _buf.erase(_buf.begin(), _buf.begin() + ret);
             }
             else if (_event.events & EPOLLIN) {
@@ -519,7 +525,7 @@ int Client::run(void) {
                             }
                             else {
                                 std::cout << this->_inbuf << std::endl;
-                            }
+                            logs = false;}
                             this->_buf.clear();
                             this->_inbuf.clear();
                             this->_packetsize = 0;
@@ -535,6 +541,8 @@ int Client::run(void) {
                     }
             }
             else {
+                logs = this->_buf == "log?";
+                quit = this->_buf == "quit";
                 if (!this->encrypt())
                     return 1;
                 std::string header = "Length ";
@@ -556,6 +564,21 @@ int Client::run(void) {
                         return 1;
                     }
                     pending = true;
+                }
+                else if (logs && _buf.empty() && _secure && authenticated) {
+                     memset(&_event, 0, sizeof(_event));
+                    _event.data.fd = _sockfd;
+                    _event.events = EPOLLIN;
+                    if (epoll_ctl(_epollfd, EPOLL_CTL_MOD, _sockfd, &_event) == -1) {
+                        std::cerr << "Could not modify socket event in epoll" << std::endl;
+                        return 1;
+                    }
+                    pending = true;
+
+                }
+                else if (quit && _buf.empty()) {
+                    std::cout << "Goodbye" << std::endl;
+                    return 0;
                 }
             }
         }
