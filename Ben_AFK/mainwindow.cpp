@@ -179,6 +179,7 @@ void MainWindow::Handshake(void) {
 		QMetaObject::invokeMethod(this, "Handshake");
 	} else {
         ui->stackedWidget->setCurrentIndex(PageIndex::Auth);
+		status = SendRSA;
 	}
 }
 
@@ -320,6 +321,7 @@ void MainWindow::Auth() {
 		QMetaObject::invokeMethod(this, "Auth");
 	} else {
 		ui->stackedWidget->setCurrentIndex(PageIndex::Chat);
+		status = SendInfo;
 	}
 }
 
