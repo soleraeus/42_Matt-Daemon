@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:59:28 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/06 20:28:35 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/30 21:15:16 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,7 @@
 
 Tintin_reporter::Tintin_reporter(void) noexcept {}
 
-Tintin_reporter::Tintin_reporter(std::string const & filepath): _filepath(filepath), _logfile(filepath, std::ios::out | std::ios::app)
+Tintin_reporter::Tintin_reporter(std::string const & filepath): _filepath(filepath), _logfile(filepath, std::ios::out | std::ios::in | std::ios::app)
 {
 	if (!this->_logfile.good())
 		throw std::invalid_argument("Could not open logfile");
@@ -190,4 +190,23 @@ std::string	Tintin_reporter::get_time(void) const
 	}
 	strftime(buf, 50, "[%d/%m/%Y-%R:%S]", curr_tm);
 	return (std::string(buf));
+}
+
+Tintin_reporter::Return Tintin_reporter::send_logs(std::string & send_buffer) {
+    char    buf[4096];
+
+    this->_logfile.seekg(-4096, std::ios_base::end);
+    if (!this->_logfile.good()) {
+        std::cerr << "Could not move cursor" << std::endl;
+        return Tintin_reporter::Return::SYSTEM_ERROR;
+    }
+    this->_logfile.read(buf, 4096);
+    if (!this->_logfile.good()) {
+        std::cerr << "Could not read from logfile" << std::endl;
+        return Tintin_reporter::Return::SYSTEM_ERROR;
+    }
+    buf[this->_logfile.gcount()] = '\0';
+    send_buffer = buf;
+    send_buffer.erase(0, send_buffer.find('\n') + 1);
+    return Tintin_reporter::Return::OK;
 }

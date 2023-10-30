@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/26 22:47:37 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/30 21:12:26 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -183,6 +183,24 @@ Client::Return  Client::flush(std::shared_ptr<Tintin_reporter>& reporter)
         sub = this->_buffer.substr(0, pos);
         if (sub == "quit")
             return Client::Return::QUIT;
+        if (this->_authenticated && sub == "log?") {
+            if (reporter->log("Client requested logs", LOG) != Tintin_reporter::Return::OK)
+                return Client::Return::QUIT;
+            if (reporter->send_logs(this->_send_buffer) != Tintin_reporter::Return::OK) {
+                std::cerr << "Could not prepare logs for sending to client" << std::endl;
+                return Client::Return::QUIT;
+            }
+            std::cerr << "Logs to send\n" << this->_send_buffer << std::endl;
+            this->_buffer.clear();
+            if (!this->encrypt(reporter)) {
+                return Client::Return::KICK;
+            }
+            std::string header = "Length ";
+            header += std::to_string(this->_send_buffer.size());
+            header += "\n";
+            this->_send_buffer.insert(this->_send_buffer.begin(), header.begin(), header.end());
+            return Client::Return::SEND;
+        }
         if (reporter->client_log(sub) != Tintin_reporter::Return::OK)
             return Client::Return::QUIT;
         this->_buffer.erase(0, pos + 1);
