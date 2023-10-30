@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:59:28 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/30 21:31:05 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/30 21:36:10 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -208,7 +208,7 @@ Tintin_reporter::Return Tintin_reporter::send_logs(std::string & send_buffer) {
         return Tintin_reporter::Return::SYSTEM_ERROR;
     }
     this->_logfile.read(buf, cursor_pos > PIPE_BUF ? PIPE_BUF : static_cast<int>(cursor_pos));
-    if (!this->_logfile.good()) {
+    if (this->_logfile.fail() || this->_logfile.bad()) {
         std::cerr << "Could not read from logfile" << std::endl;
         return Tintin_reporter::Return::SYSTEM_ERROR;
     }
