@@ -6,21 +6,26 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:50:15 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/24 21:56:29 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/30 23:36:23 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef MATT_DAEMON_BEN_AFK_CLI_CLIENT_HPP
 # define MATT_DAEMON_BEN_AFK_CLI_CLIENT_HPP
 
-# include <arpa/inet.h>
-# include <iostream>
+//std
 # include <iomanip>
-# include <sys/socket.h>
-# include <unistd.h>
-# include <string.h>
+# include <iostream>
 # include <system_error>
+
+//C
+# include <string.h>
+# include <unistd.h>
+
+//Unix
+# include <arpa/inet.h>
 # include <sys/epoll.h>
+# include <sys/socket.h>
 # include <sys/types.h>
 
 //Openssl
@@ -42,7 +47,6 @@ class Client {
         Client& operator=(const Client& rhs);
         Client& operator=(Client&& rhs);
 
-        void    printPubkey(void);
         int     run(void);
 
     private:
@@ -66,11 +70,13 @@ class Client {
         EVP_CIPHER_CTX*     _ctx;
         EVP_CIPHER*         _cipher;
 
+        bool                getCredentials(void);
+        bool                getUserInput(void);
         bool                getPacketSize(void);
         bool                decryptAESKey(void);
         bool                encrypt(void);
         bool                decrypt(void);
-        void                increaseIV(void);
+        void                initRSA(void);
 };
 
 #endif

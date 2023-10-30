@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/26 22:49:25 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/30 23:40:01 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -18,33 +18,7 @@ Client::Client(const char* ip, bool secure): _secure(secure), _handshake(false),
         if (!_RSA_key) {
             throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not generate RSA key for handshake");
         }
-        _mem = BIO_new(BIO_s_mem());
-        if (!_mem) {
-            EVP_PKEY_free(_RSA_key);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not initiate BIO");
-        }
-        if (!PEM_write_bio_PUBKEY(_mem, _RSA_key)) {
-            EVP_PKEY_free(_RSA_key);
-            BIO_free(_mem);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not put public key in BIO object");
-        }
-        _pubkey_len = BIO_get_mem_data(_mem, &_pubkey);
-        if (_pubkey_len <= 0) {
-            EVP_PKEY_free(_RSA_key);
-            BIO_free(_mem);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not read public key from BIO");
-        }
-        if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
-            EVP_PKEY_free(_RSA_key);
-            BIO_free(_mem);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
-        }
-        if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
-            EVP_PKEY_free(_RSA_key);
-            BIO_free(_mem);
-            EVP_CIPHER_CTX_free(_ctx);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
-        }
+        this->initRSA();
     }
     bzero(&_sockaddr, sizeof(_sockaddr));
     if ((_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0)) <= 0) {
@@ -76,33 +50,7 @@ Client::Client(const Client& src): _secure(src._secure), _handshake(src._handsha
         if (!_RSA_key) {
             throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicate key");
         }
-        _mem = BIO_new(BIO_s_mem());
-        if (!_mem) {
-            EVP_PKEY_free(_RSA_key);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not initiate BIO");
-        }
-        if (!PEM_write_bio_PUBKEY(_mem, _RSA_key)) {
-            EVP_PKEY_free(_RSA_key);
-            BIO_free(_mem);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not put public key in BIO object");
-        }
-        _pubkey_len = BIO_get_mem_data(_mem, &_pubkey);
-        if (_pubkey_len <= 0) {
-            EVP_PKEY_free(_RSA_key);
-            BIO_free(_mem);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not read public key from BIO");
-        }
-        if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
-            EVP_PKEY_free(_RSA_key);
-            BIO_free(_mem);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
-        }
-        if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
-            EVP_PKEY_free(_RSA_key);
-            BIO_free(_mem);
-            EVP_CIPHER_CTX_free(_ctx);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
-        }
+        this->initRSA();
     }
     memcpy((void *)&_sockaddr, (void *)&src._sockaddr, sizeof(_sockaddr));
     if (src._sockfd > 0) {
@@ -189,33 +137,7 @@ Client& Client::operator=(const Client& rhs) {
         if (!_RSA_key) {
             throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicate key");
         }
-        _mem = BIO_new(BIO_s_mem());
-        if (!_mem) {
-            EVP_PKEY_free(_RSA_key);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not initiate BIO");
-        }
-        if (!PEM_write_bio_PUBKEY(_mem, _RSA_key)) {
-            EVP_PKEY_free(_RSA_key);
-            BIO_free(_mem);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not put public key in BIO object");
-        }
-        _pubkey_len = BIO_get_mem_data(_mem, &_pubkey);
-        if (_pubkey_len <= 0) {
-            EVP_PKEY_free(_RSA_key);
-            BIO_free(_mem);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not read public key from BIO");
-        }
-        if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
-            EVP_PKEY_free(_RSA_key);
-            BIO_free(_mem);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
-        }
-        if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
-            EVP_PKEY_free(_RSA_key);
-            BIO_free(_mem);
-            EVP_CIPHER_CTX_free(_ctx);
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
-        }
+        this->initRSA();
     }
     memcpy((void *)&_sockaddr, (void *)&rhs._sockaddr, sizeof(_sockaddr));
     if (rhs._sockfd >= 0) {
@@ -291,18 +213,6 @@ Client& Client::operator=(Client&& rhs) {
     return (*this);
 }
 
-void    Client::printPubkey(void)
-{
-    if (!_RSA_key || !_pubkey) {
-        std::cerr << "No key generated" << std::endl;
-    }
-    else {
-        for (long i = 0; i < _pubkey_len; ++i) {
-            std::cout << _pubkey[i];
-        }
-    }
-}
-
 bool    Client::getPacketSize(void)
 {
     size_t    pos = 0;
@@ -312,10 +222,10 @@ bool    Client::getPacketSize(void)
     {
         if (this->_buf[i] == '\n')
         {
-            if (i < 8 || i > 12)
+            if (i < 8 || i > 12
+                || memcmp((void *)"Length ",(void *)&this->_buf[0], 7)) {
                 return false;
-            if (memcmp((void *)"Length ",(void *)&this->_buf[0], 7))
-                return false;
+            }
             pos = i;
             if (this->_buf[i - 1] == '\r')
                 pos = i - 1;
@@ -334,7 +244,7 @@ bool    Client::getPacketSize(void)
             return true;
         }
         if ((this->_buf[i] < ' ' || this->_buf[i] > 'z')
-                        && this->_buf[i] != '\r') {
+            && this->_buf[i] != '\r') {
             return false;
         }
     }
@@ -343,6 +253,49 @@ bool    Client::getPacketSize(void)
     return true;
 }
 
+bool    Client::getCredentials(void) {
+    std::string username;
+    std::string password;
+
+    std::cout << "Please authenticate in order to use Matt Daemon" << std::endl;
+    do {
+        std::cout << "Username (between 5 and 128 characters): ";
+        std::getline(std::cin, username);
+        if (username.size() >= 5 && username.size() <= 128)
+            break ;
+        else
+            std::cout << "Invalid username provided" << std::endl;
+    } while (!std::cin.eof());
+    if (std::cin.eof()) {
+        std::cerr << std::endl << "No username provided, leaving Ben AFK" << std::endl;
+        return false;
+    }
+    do {
+        std::cout << "Password (between 12 and 128 characters): ";
+        std::getline(std::cin, password);
+        if (password.size() >= 12 && password.size() <= 128)
+            break ;
+        else
+            std::cout << "Invalid password provided" << std::endl;
+
+    } while (!std::cin.eof());
+    if (std::cin.eof()) {
+        std::cerr << std::endl << "No password provided, leaving Ben AFK" << std::endl;
+        return false;
+    }
+    this->_buf = username + "\n" + password;
+    return true;
+}
+
+bool    Client::getUserInput(void) {
+    std::cout << "Ben_AFK > ";
+    std::getline(std::cin, _buf);
+    if (!std::cin.eof())
+        return true;
+    std::cout << "Goodbye" << std::endl;
+    epoll_ctl(_epollfd, EPOLL_CTL_DEL, _sockfd, &_event);
+    return false;
+}
 
 int Client::run(void) {
     bool        logs = false;
@@ -374,44 +327,12 @@ int Client::run(void) {
     while (true) {
         if (!(_secure && !_handshake) && _buf.empty() && !pending) {
             if (_secure && !authenticated) {
-                std::string username;
-                std::string password;
-                std::cout << "Please authenticate in order to use Matt Daemon" << std::endl;
-                do {
-                    std::cout << "Username (between 5 and 128 characters): ";
-                    std::getline(std::cin, username);
-                    if (username.size() >= 5 && username.size() <= 128)
-                        break ;
-                    else
-                        std::cout << "Invalid username provided" << std::endl;
-                } while (!std::cin.eof());
-                if (std::cin.eof()) {
-                    std::cerr << std::endl << "No username provided, leaving Ben AFK" << std::endl;
+                if (!this->getCredentials())
                     return 1;
-                }
-                do {
-                    std::cout << "Password (between 12 and 128 characters): ";
-                    std::getline(std::cin, password);
-                    if (password.size() >= 12 && password.size() <= 128)
-                        break ;
-                    else
-                        std::cout << "Invalid password provided" << std::endl;
-
-                } while (!std::cin.eof());
-                if (std::cin.eof()) {
-                    std::cerr << std::endl << "No password provided, leaving Ben AFK" << std::endl;
-                    return 1;
-                }
-                this->_buf = username + "\n" + password;
             }
             else {
-                std::cout << "Ben_AFK > ";
-                std::getline(std::cin, _buf);
-                if (std::cin.eof()) {
-                    std::cout << "Goodbye" << std::endl;
-                    epoll_ctl(_epollfd, EPOLL_CTL_DEL, _sockfd, &_event);
+                if (!this->getUserInput())
                     return 0;
-                }
             }
         }
         hasevent = epoll_wait(_epollfd, &_event, 1, 1000*60*2);
@@ -650,6 +571,8 @@ bool    Client::encrypt(void) {
         std::cerr << "You cannot send more than " << PIPE_BUF << " bytes to Matt_daemon" << std::endl;
         return false;
     }
+
+    //Generate next iv
     if (!RAND_bytes(nextiv, 16)) {
         std::cerr << "Could not generate next iv" << std::endl;
         return false;
@@ -657,39 +580,38 @@ bool    Client::encrypt(void) {
     this->_buf.insert(this->_buf.end(), nextiv, nextiv + 16);
     params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
 
-    /*
-     * Initialise an encrypt operation with the cipher/mode, key, IV and
-     * IV length parameter.
-     */
+    //Initialize context
     if (!EVP_EncryptInit_ex2(_ctx, _cipher, _key, _iv, params)) {
         std::cerr << "Could not initialize encryption" << std::endl;
         return false;
     }
 
-    /* Encrypt plaintext */
+    //Encrypt
     if (!EVP_EncryptUpdate(_ctx, outbuf, &outlen, reinterpret_cast<unsigned char*>(_buf.data()), static_cast<int>(_buf.size()))) {
         std::cerr << "Could not encrypt buffer" << std::endl;
         return false;
     }
 
-    /* Finalise: note get no output for GCM */
+    //Finalize
     if (!EVP_EncryptFinal_ex(_ctx, outbuf, &tmplen)) {
         std::cerr << "Could not finalize encryption" << std::endl;
         return false;
     }
 
-    /* Get tag */
+    // Get tag
     params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, outtag, 16);
     if (!EVP_CIPHER_CTX_get_params(_ctx, params)) {
         std::cerr << "Could not get tag" << std::endl;
         return false;
     }
 
-    /* Output tag */
+    //Add tag to the message
     _buf.assign(outbuf, outbuf + outlen);
     _buf.insert(_buf.end(), outtag, outtag + 16);
+
+    //Save next iv
     memcpy(this->_iv, nextiv, 16);
-    //EVP_CIPHER_CTX_reset(this->_ctx);
+
     return true;
 }
 
@@ -709,59 +631,73 @@ bool    Client::decrypt(void) {
     }
     tag.assign(this->_buf.begin() + this->_packetsize - 16, this->_buf.begin() + this->_packetsize);
 
-    //Put data to decrypt in buffer
-
+    //Initialize context
     params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
-
-    /*
-     * Initialise an encrypt operation with the cipher/mode, key, IV and
-     * IV length parameter.
-     */
     if (!EVP_DecryptInit_ex2(_ctx, _cipher, _key, _iv, params)) {
         std::cerr << "Could not init decryption" << std::endl;
         return false;
     }
 
-    /* Decrypt plaintext */
+    //Decrypt plaintext
     if (!EVP_DecryptUpdate(_ctx, outbuf, &outlen, reinterpret_cast<unsigned char*>(this->_buf.data()), static_cast<int>(this->_packetsize) - 16)) {
         std::cerr << "Could not decrypt package" << std::endl;
         return false;
     }
 
-    /* Set expected tag value. */
+    //Set expected tag
     params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, (void*)tag.data(), 16);
-
     if (!EVP_CIPHER_CTX_set_params(_ctx, params)) {
         std::cerr << "Could not set expected tag" << std::endl;
         return false;
     }
 
+    //Save next iv
     if (outlen < 16) {
         std::cerr << "Decrypted packet too small" << std::endl;
         return false;
     }
     memcpy(this->_iv, outbuf + outlen - 16, 16);
+
+    //Add received message to buffer
     this->_inbuf.assign(outbuf, outbuf + outlen - 16);
     this->_buf.erase(this->_buf.begin(), this->_buf.begin() + this->_packetsize);
-    /* Finalise: note get no output for GCM */
-    rv = EVP_DecryptFinal_ex(_ctx, outbuf, &outlen);
 
-    /*
-     * Print out return value. If this is not successful authentication
-     * failed and plaintext is not trustworthy.
-     */
+    //Verify tag
+    rv = EVP_DecryptFinal_ex(_ctx, outbuf, &outlen);
     if (rv <= 0) {
         std::cerr << "Tag authentication failed" << std::endl;
         return false;
     }
-    //EVP_CIPHER_CTX_reset(this->_ctx);
+
     return true;
 }
 
-void    Client::increaseIV(void) {
-    for (int i = 15; i >= 0; --i) {
-        this->_iv[i] += 1;
-        if (this->_iv[i] != 0)
-            break;
+void    Client::initRSA(void) {
+    _mem = BIO_new(BIO_s_mem());
+    if (!_mem) {
+        EVP_PKEY_free(_RSA_key);
+        throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not initiate BIO");
+    }
+    if (!PEM_write_bio_PUBKEY(_mem, _RSA_key)) {
+        EVP_PKEY_free(_RSA_key);
+        BIO_free(_mem);
+        throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not put public key in BIO object");
+    }
+    _pubkey_len = BIO_get_mem_data(_mem, &_pubkey);
+    if (_pubkey_len <= 0) {
+        EVP_PKEY_free(_RSA_key);
+        BIO_free(_mem);
+        throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not read public key from BIO");
+    }
+    if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
+        EVP_PKEY_free(_RSA_key);
+        BIO_free(_mem);
+        throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
+    }
+    if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
+        EVP_PKEY_free(_RSA_key);
+        BIO_free(_mem);
+        EVP_CIPHER_CTX_free(_ctx);
+        throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
     }
 }
