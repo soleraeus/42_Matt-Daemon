@@ -18,7 +18,7 @@
     <item row="0" column="0">
      <widget class="QStackedWidget" name="stackedWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="pageChoose">
        <layout class="QGridLayout" name="gridLayout_4">
@@ -63,7 +63,7 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="page_3">
+      <widget class="QWidget" name="pageAuth">
        <property name="minimumSize">
         <size>
          <width>359</width>
