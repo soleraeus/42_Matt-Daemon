@@ -198,33 +198,26 @@ Tintin_reporter::Return Tintin_reporter::send_logs(std::string & send_buffer) {
 
     cursor_pos = this->_logfile.tellg();
     if (cursor_pos == -1) {
-        std::cerr << "Could not get position of cursor" << std::endl;
         return Tintin_reporter::Return::SYSTEM_ERROR;
     }
-    std::cerr << "Current position: " << cursor_pos << std::endl;
     if (cursor_pos > PIPE_BUF) {
         this->_logfile.seekg(-PIPE_BUF, std::ios_base::end);
         if (!this->_logfile.good()) {
-            std::cerr << "Could not move cursor" << std::endl;
             return Tintin_reporter::Return::SYSTEM_ERROR;
         }
         this->_logfile.read(buf, PIPE_BUF);
     }
     else {
-        std::cerr << "Limited range" << std::endl;
         this->_logfile.seekg(0, std::ios_base::beg);
         if (!this->_logfile.good()) {
-            std::cerr << "Could not move cursor" << std::endl;
             return Tintin_reporter::Return::SYSTEM_ERROR;
         }
         this->_logfile.read(buf, static_cast<int>(cursor_pos));
     }
     if (this->_logfile.fail()) {
-        std::cerr << "Could not read from logfile, failbit set" << std::endl;
         return Tintin_reporter::Return::SYSTEM_ERROR;
     }
     else if (this->_logfile.bad()) {
-        std::cerr << "Could not read from logfile, badbit set" << std::endl;
         return Tintin_reporter::Return::SYSTEM_ERROR;
     }
     buf[this->_logfile.gcount()] = '\0';
