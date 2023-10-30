@@ -349,7 +349,7 @@ void MainWindow::GetLog(void) {
 	switch (status) {
 		case RequestLog : {
 			qDebug() << "Asking for log";
-			QByteArray msg = "log?";
+			QByteArray msg = "log?\n";
 			msg = secured_client->encrypt(msg);
 			std::string header = "Length ";
 			header += std::to_string(msg.size());
