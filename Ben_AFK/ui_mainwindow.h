@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'mainwindow.ui'
 **
-** Created by: Qt User Interface Compiler version 6.5.2
+** Created by: Qt User Interface Compiler version 6.6.0
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -19,6 +19,7 @@
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QPushButton>
+#include <QtWidgets/QSpacerItem>
 #include <QtWidgets/QStackedWidget>
 #include <QtWidgets/QTabWidget>
 #include <QtWidgets/QTextBrowser>
@@ -50,7 +51,9 @@ public:
     QPushButton *buttonSubmit_2;
     QWidget *pageLoading;
     QGridLayout *gridLayout_5;
+    QSpacerItem *horizontalSpacer;
     QLabel *labelMovie;
+    QSpacerItem *horizontalSpacer_2;
     QWidget *pageClient;
     QGridLayout *gridLayout_3;
     QTabWidget *tabWidget;
@@ -69,7 +72,7 @@ public:
     {
         if (MainWindow->objectName().isEmpty())
             MainWindow->setObjectName("MainWindow");
-        MainWindow->resize(377, 275);
+        MainWindow->resize(377, 251);
         centralwidget = new QWidget(MainWindow);
         centralwidget->setObjectName("centralwidget");
         gridLayout = new QGridLayout(centralwidget);
@@ -146,10 +149,19 @@ public:
         pageLoading->setObjectName("pageLoading");
         gridLayout_5 = new QGridLayout(pageLoading);
         gridLayout_5->setObjectName("gridLayout_5");
+        horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+        gridLayout_5->addItem(horizontalSpacer, 0, 0, 1, 1);
+
         labelMovie = new QLabel(pageLoading);
         labelMovie->setObjectName("labelMovie");
+        labelMovie->setWordWrap(false);
 
-        gridLayout_5->addWidget(labelMovie, 0, 0, 1, 1);
+        gridLayout_5->addWidget(labelMovie, 0, 1, 1, 1);
+
+        horizontalSpacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+        gridLayout_5->addItem(horizontalSpacer_2, 0, 2, 1, 1);
 
         stackedWidget->addWidget(pageLoading);
         pageClient = new QWidget();
@@ -220,7 +232,7 @@ public:
         lineIp->setText(QCoreApplication::translate("MainWindow", "localhost", nullptr));
         groupBox_2->setTitle(QCoreApplication::translate("MainWindow", "login", nullptr));
         buttonSubmit_2->setText(QCoreApplication::translate("MainWindow", "submit", nullptr));
-        labelMovie->setText(QCoreApplication::translate("MainWindow", "                                                         LOADING", nullptr));
+        labelMovie->setText(QCoreApplication::translate("MainWindow", "LOADING", nullptr));
         buttonSend->setText(QCoreApplication::translate("MainWindow", "send", nullptr));
         tabWidget->setTabText(tabWidget->indexOf(tabChat), QCoreApplication::translate("MainWindow", "chat", nullptr));
         textLog->setHtml(QCoreApplication::translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
