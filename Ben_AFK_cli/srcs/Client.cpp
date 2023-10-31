@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/31 20:07:08 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/31 21:43:31 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -287,8 +287,10 @@ bool    Client::getCredentials(void) {
     } while (!std::cin.eof());
     if (std::cin.eof()) {
         std::cerr << std::endl << "No password provided, leaving Ben AFK" << std::endl;
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
         return false;
     }
+    std::cout << std::endl;
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
     this->_buf = username + "\n" + password;
     return true;
