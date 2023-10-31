@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "Client.hpp"
+#include <functional>
 
 Client::Client(void):
         _fd(0),
@@ -308,11 +309,11 @@ Client::Return  Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
         {
             if (!this->_handshake)
                 return this->handshake();
-            else if (!this->_authenticated)
+            if (!this->_authenticated)
                 return this->authenticate(reporter);
-            else if (!this->decrypt())
+            if (!this->decrypt())
                 return Client::Return::KICK;
-            else if ((ret = this->getPacketSize()) != Client::Return::OK)
+            if ((ret = this->getPacketSize()) != Client::Return::OK)
                 return ret;
         }
     }
@@ -324,16 +325,15 @@ Client::Return  Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
 Client::Return  Client::sendKey(void) {
     size_t  outlen;
 
-    this->_packetsize = 0;
-
     //Putting public key received in BIO
-    std::shared_ptr<BIO>    pubKey(BIO_new_mem_buf((void*) this->_RSA_buf, this->_packetsize),
-                                    [](BIO* ptr) -> void {
-                                        if (ptr != nullptr)
-                                            BIO_free(ptr);
-                                    });
+    std::unique_ptr<BIO, std::function<void(BIO*)>>    pubKey(BIO_new_mem_buf((void*) this->_RSA_buf, this->_packetsize),
+                                                               [](BIO* ptr) -> void {
+                                                                    if (ptr != nullptr)
+                                                                        BIO_free(ptr);
+                                                                });
     if (!pubKey)
         return Client::Return::KICK;
+    this->_packetsize = 0;
 
     //Using the BIO to create an EVP_KEY
     EVP_PKEY* RSA_key = nullptr;
@@ -341,27 +341,28 @@ Client::Return  Client::sendKey(void) {
     if (!RSA_key) {
         return Client::Return::KICK;
     }
-    EVP_PKEY_CTX*   ctx = EVP_PKEY_CTX_new(RSA_key, nullptr);
-    if (!ctx) {
-      EVP_PKEY_free(RSA_key);
+    std::unique_ptr<EVP_PKEY, std::function<void(EVP_PKEY*)>>    RSAKeyPtr(RSA_key,
+                                                                            [](EVP_PKEY* ptr) -> void {
+                                                                                if (ptr != nullptr)
+                                                                                    EVP_PKEY_free(ptr);
+                                                                            });
+    std::unique_ptr<EVP_PKEY_CTX, std::function<void(EVP_PKEY_CTX*)>>   ctx(EVP_PKEY_CTX_new(RSAKeyPtr.get(), nullptr),
+                                                                            [](EVP_PKEY_CTX* ptr) -> void {
+                                                                                if (ptr != nullptr)
+                                                                                    EVP_PKEY_CTX_free(ptr);
+                                                                            });
+    if (!ctx)
+      return Client::Return::KICK;
+    if (EVP_PKEY_encrypt_init(ctx.get()) <= 0) {
       return Client::Return::KICK;
     }
-    if (EVP_PKEY_encrypt_init(ctx) <= 0) {
-      EVP_PKEY_CTX_free(ctx);
-      EVP_PKEY_free(RSA_key);
-      return Client::Return::KICK;
-    }
-    if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
-      EVP_PKEY_CTX_free(ctx);
-      EVP_PKEY_free(RSA_key);
+    if (EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING) <= 0) {
       return Client::Return::KICK;
     }
     std::string out;
     out.assign(this->_key, this->_key + 32);
     out.insert(out.end(), this->_iv, this->_iv + 16);
-    if (EVP_PKEY_encrypt(ctx, nullptr, &outlen, (const unsigned char*) out.data(), out.size()) <= 0) {
-      EVP_PKEY_CTX_free(ctx);
-      EVP_PKEY_free(RSA_key);
+    if (EVP_PKEY_encrypt(ctx.get(), nullptr, &outlen, (const unsigned char*) out.data(), out.size()) <= 0) {
       return Client::Return::KICK;
     }
     unsigned char* out_tmp_buf = nullptr; 
@@ -369,20 +370,15 @@ Client::Return  Client::sendKey(void) {
       out_tmp_buf = new unsigned char[outlen];
     }
     catch (std::exception const & e) {
-      EVP_PKEY_CTX_free(ctx);
-      EVP_PKEY_free(RSA_key);
       return Client::Return::KICK;
     }
-    if (EVP_PKEY_encrypt(ctx, out_tmp_buf, &outlen, (const unsigned char*) out.data(), out.size()) <= 0) {
+    if (EVP_PKEY_encrypt(ctx.get(), out_tmp_buf, &outlen, (const unsigned char*) out.data(), out.size()) <= 0) {
       delete [] out_tmp_buf;
-      EVP_PKEY_CTX_free(ctx);
-      EVP_PKEY_free(RSA_key);
       return Client::Return::KICK;
     }
+    this->_send_buffer.insert(this->_send_buffer.end(), out_tmp_buf, out_tmp_buf + outlen);
     this->addHeader();
     delete [] out_tmp_buf;
-    EVP_PKEY_CTX_free(ctx);
-    EVP_PKEY_free(RSA_key);
     this->_handshake = true;
     return Client::Return::SEND;
 }
