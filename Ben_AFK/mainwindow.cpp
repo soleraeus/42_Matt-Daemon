@@ -14,6 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lineChat->setPlaceholderText("write here");
 	ui->lineUsername_2->setPlaceholderText("username");
 	ui->linePassword_2->setPlaceholderText("password");
+	ui->linePassword_2->setEchoMode(QLineEdit::Password);
 
     connect(ui->buttonStandard, &QPushButton::clicked, this, &MainWindow::standard);
     connect(ui->buttonSecured, &QPushButton::clicked, this, &MainWindow::secured);
