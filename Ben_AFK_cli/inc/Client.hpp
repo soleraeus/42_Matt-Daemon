@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:50:15 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/30 23:36:23 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/31 20:05:20 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,7 @@
 
 //C
 # include <string.h>
+# include <termios.h>
 # include <unistd.h>
 
 //Unix

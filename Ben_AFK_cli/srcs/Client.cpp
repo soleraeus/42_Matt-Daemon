@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/30 23:40:01 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/31 20:07:08 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -270,6 +270,12 @@ bool    Client::getCredentials(void) {
         std::cerr << std::endl << "No username provided, leaving Ben AFK" << std::endl;
         return false;
     }
+
+    termios oldt;
+    tcgetattr(STDIN_FILENO, &oldt);
+    termios newt = oldt;
+    newt.c_lflag &= ~ECHO;
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
     do {
         std::cout << "Password (between 12 and 128 characters): ";
         std::getline(std::cin, password);
@@ -283,6 +289,7 @@ bool    Client::getCredentials(void) {
         std::cerr << std::endl << "No password provided, leaving Ben AFK" << std::endl;
         return false;
     }
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
     this->_buf = username + "\n" + password;
     return true;
 }
