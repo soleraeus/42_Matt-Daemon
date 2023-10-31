@@ -6,25 +6,34 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/31 21:44:04 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/31 22:31:38 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <unistd.h>
-#include <termios.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/file.h>
+//std
+#include <csignal>
+#include <exception>
 #include <iostream>
-#include <unistd.h>
-#include "Matt_daemon.hpp"
-#include "Tintin_reporter.hpp"
-#include "Server.hpp"
 #include <memory>
 #include <variant>
 
+//C
+#include <fcntl.h>
+#include <termios.h>
+#include <unistd.h>
+
+//Unix
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+//Project specific
+#include "Matt_daemon.hpp"
+#include "Server.hpp"
+#include "Tintin_reporter.hpp"
+
 volatile sig_atomic_t g_sig = 0;
+
 
 void	handler(int sig) {
 	g_sig = sig;
@@ -37,13 +46,13 @@ static bool	install_signal_handler(void)
 
 	bzero(&act, sizeof(act));
 	if (sigemptyset(&set))
-		return (false);
+		return false;
 	if (sigaddset(&set, SIGTERM) || sigaddset(&set, SIGHUP)
 		|| sigaddset(&set, SIGINT) || sigaddset(&set, SIGQUIT)
 		|| sigaddset(&set, SIGUSR1) || sigaddset(&set, SIGUSR2)
 		|| sigaddset(&set, SIGTSTP))
 	{
-		return (false);
+		return false;
 	}
 	act.sa_handler = handler;
 	act.sa_mask = set;
@@ -52,17 +61,17 @@ static bool	install_signal_handler(void)
 		|| sigaction(SIGUSR1, &act, NULL) || sigaction(SIGUSR2, &act, NULL)
 		|| sigaction(SIGTSTP, &act, NULL))
 	{
-		return (false);
+		return false;
 	}
-	return (true);
+	return true;
 }
 
 static void	exit_procedure(std::shared_ptr<Tintin_reporter>& reporter, int & lock)
 {
-	if (reporter->log("Quitting.", INFO) != Tintin_reporter::Return::OK) {} 
+	if (reporter->log("Quitting.", Tintin_reporter::Loglevel::INFO) != Tintin_reporter::Return::OK) {} 
 	if (lock > 0) {
 		close(lock);
-        unlink("/var/lock/matt_daemon.lock");
+        unlink(MATT_DAEMON_LOCKFILE_PATH);
     }
 }
 
@@ -153,7 +162,7 @@ static std::variant<Server::ServerType, bool> parseOpt(int ac, char** av) {
     return serverType;
 }
 
-static bool log(std::shared_ptr<Tintin_reporter>& reporter, const char* message, enum Loglevel level) {
+static bool log(std::shared_ptr<Tintin_reporter>& reporter, const char* message, Tintin_reporter::Loglevel level) {
 	switch (reporter->log(message, level)) {
 		case Tintin_reporter::Return::NO_FILE:
 			std::cerr << "File is not opened" << std::endl;
@@ -173,18 +182,18 @@ static bool log(std::shared_ptr<Tintin_reporter>& reporter, const char* message,
 }
 
 static std::variant<int, bool>  lockFile(std::shared_ptr<Tintin_reporter>& reporter) {
-    int lock = open("/var/lock/matt_daemon.lock", O_CREAT | O_RDWR | O_CLOEXEC, 0600);
+    int lock = open(MATT_DAEMON_LOCKFILE_PATH, O_CREAT | O_RDWR | O_CLOEXEC, 0600);
     if (lock <= 0)
 	{
-		std::cerr << "Could not open lockfile /var/lock/matt_daemon.lock" << std::endl;
-		log(reporter, "Error, could no open lockfile /var/lock/matt_daemon.lock.", ERROR);
+		std::cerr << "Could not open lockfile " << MATT_DAEMON_LOCKFILE_PATH << std::endl;
+		log(reporter, "Error could not open lockfile.", Tintin_reporter::Loglevel::ERROR);
 		exit_procedure(reporter, lock);
 		return false;
 	}
 	if (flock(lock, LOCK_EX | LOCK_NB) == -1)
 	{
-		std::cerr << "Could not lock /var/lock/matt_daemon.lock" << std::endl;
-		log(reporter, "Error file locked.", ERROR);
+		std::cerr << "Could not lock " << MATT_DAEMON_LOCKFILE_PATH << std::endl;
+		log(reporter, "Error file locked.", Tintin_reporter::Loglevel::ERROR);
         close(lock);
         lock = 0;
 		exit_procedure(reporter, lock);
@@ -219,14 +228,14 @@ int	main(int ac, char **av)
     }
 
 	try {
-		reporter = std::make_shared<Tintin_reporter, const char*>("/var/log/matt_daemon/matt_daemon.log");
+		reporter = std::make_shared<Tintin_reporter, const char*>(MATT_DAEMON_LOGFILE_PATH);
 	}
 	catch (std::exception const & e) {
 		std::cerr << "Could not create reporter: " << e.what() << std::endl;
 		return 1;
 	}
 
-    if (!log(reporter, "Started.", INFO))
+    if (!log(reporter, "Started.", Tintin_reporter::Loglevel::INFO))
         return 1;
 
     std::variant<int, bool> lockVar = lockFile(reporter);
@@ -237,12 +246,12 @@ int	main(int ac, char **av)
 	if (!install_signal_handler())
 	{
 		std::cerr << "Could not install signal handlers" << std::endl;
-		log(reporter, "Could not install signal handlers", ERROR);
+		log(reporter, "Could not install signal handlers", Tintin_reporter::Loglevel::ERROR);
 		exit_procedure(reporter, lock);
 		return 1;
 	}
 
-    if (!log(reporter, "Creating server.", INFO)) {
+    if (!log(reporter, "Creating server.", Tintin_reporter::Loglevel::INFO)) {
         exit_procedure(reporter, lock);
         return 1;
     }
@@ -251,17 +260,17 @@ int	main(int ac, char **av)
 	if (!server.create_server(serverType, username, password))
 	{
 		std::cerr << "Could not create server" << std::endl;
-		log(reporter, "Could not create server", ERROR);
+		log(reporter, "Could not create server", Tintin_reporter::Loglevel::ERROR);
 		exit_procedure(reporter, lock);
 		return 1;
 	}
-    if (!log(reporter, "Server created.", INFO)) {
+    if (!log(reporter, "Server created.", Tintin_reporter::Loglevel::INFO)) {
         exit_procedure(reporter, lock);
         return 1;
     }
-
+    //TODO deamonize
 	server.serve();
 	exit_procedure(reporter, lock);
 
-	return (0);
+	return 0;
 }

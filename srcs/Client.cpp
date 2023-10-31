@@ -6,33 +6,75 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/30 21:12:26 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/31 23:25:46 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
 
-Client::Client(void): _fd(0), _packetsize(0), _secure(false), _handshake(false), _key(nullptr), _auth_tries(0), _authenticated(false), _ctx(nullptr), _cipher(nullptr) {}
+Client::Client(void):
+        _fd(0),
+        _packetsize(0),
+        _secure(false),
+        _handshake(false),
+        _key(nullptr),
+        _auth_tries(0),
+        _authenticated(false),
+        _ctx(nullptr),
+        _cipher(nullptr) {}
 
-Client::Client(int fd): _fd(fd), _packetsize(0), _secure(false), _handshake(false), _key(nullptr), _auth_tries(0), _authenticated(false), _ctx(nullptr), _cipher(nullptr) {}
+Client::Client(int fd):
+        _fd(fd),
+        _packetsize(0),
+        _secure(false),
+        _handshake(false),
+        _key(nullptr),
+        _auth_tries(0),
+        _authenticated(false),
+        _ctx(nullptr),
+        _cipher(nullptr) {}
 
-Client::Client(int fd, unsigned char* key, const std::string& username, const std::string& password): _fd(fd), _packetsize(0), _secure(true), _handshake(false), _key(key), _username(username), _password(password), _auth_tries(0), _authenticated(false), _ctx(nullptr), _cipher(nullptr) {
+Client::Client(int fd, unsigned char* key, const std::string& username, const std::string& password):
+        _fd(fd),
+        _packetsize(0),
+        _secure(true),
+        _handshake(false),
+        _key(key),
+        _username(username),
+        _password(password),
+        _auth_tries(0),
+        _authenticated(false),
+        _ctx(nullptr), 
+        _cipher(nullptr) {
     if (!RAND_bytes(this->_iv, 16))
-    {
         throw std::system_error(std::error_code(), "Could not generate iv");
-    }
-    if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
+    if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr)
         throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
-    }
     if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
         EVP_CIPHER_CTX_free(_ctx);
         throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
     }
 }
 
-Client::Client(const Client & src): _fd(dup(src._fd)), _packetsize(src._packetsize), _secure(src._secure), _handshake(src._handshake), _key(src._key), _username(src._username), _password(src._password), _auth_tries(src._auth_tries), _authenticated(src._authenticated), _buffer(src._buffer), _encrypted_buffer(src._encrypted_buffer) {
-    memcpy(this->_iv, src._iv, 16);
+Client::Client(const Client & src):
+        _fd(0),
+        _packetsize(src._packetsize),
+        _secure(src._secure),
+        _handshake(src._handshake),
+        _key(src._key),
+        _username(src._username),
+        _password(src._password),
+        _auth_tries(src._auth_tries),
+        _authenticated(src._authenticated),
+        _buffer(src._buffer),
+        _send_buffer(src._send_buffer),
+        _encrypted_buffer(src._encrypted_buffer) {
+    if (src._fd > 0)
+        this->_fd = dup(src._fd);
+    if (this->_fd < 0)
+        throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicated fd");
     memcpy(this->_RSA_buf, src._RSA_buf, 1024);
+    memcpy(this->_iv, src._iv, 16);
     if (src._secure) {
         if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
             throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
@@ -43,9 +85,23 @@ Client::Client(const Client & src): _fd(dup(src._fd)), _packetsize(src._packetsi
         }
     }
 }
-Client::Client(Client && src): _fd(std::move(src._fd)), _packetsize(src._packetsize), _secure(src._secure), _handshake(src._handshake), _key(src._key), _username(std::move(src._username)), _password(std::move(src._password)), _auth_tries(src._auth_tries), _authenticated(src._authenticated), _buffer(std::move(src._buffer)), _encrypted_buffer(std::move(src._encrypted_buffer)), _ctx(src._ctx), _cipher(src._cipher) {
-    memcpy(this->_iv, src._iv, 16);
+Client::Client(Client && src):
+        _fd(std::move(src._fd)),
+        _packetsize(src._packetsize),
+        _secure(src._secure),
+        _handshake(src._handshake),
+        _key(src._key),
+        _username(std::move(src._username)),
+        _password(std::move(src._password)),
+        _auth_tries(src._auth_tries),
+        _authenticated(src._authenticated),
+        _buffer(std::move(src._buffer)),
+        _send_buffer(std::move(src._send_buffer)),
+        _encrypted_buffer(std::move(src._encrypted_buffer)),
+        _ctx(src._ctx),
+        _cipher(src._cipher) {
     memcpy(this->_RSA_buf, src._RSA_buf, 1024);
+    memcpy(this->_iv, src._iv, 16);
     src._fd = 0;
     src._key = nullptr;
     src._authenticated = false;
@@ -67,18 +123,21 @@ Client & Client::operator=(const Client & rhs)
     if (this == &rhs)
         return (*this);
     this->_fd = dup(rhs._fd);
+    if (this->_fd < 0)
+        throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicated fd");
     this->_packetsize = rhs._packetsize;
     this->_secure = rhs._secure;
     this->_handshake = rhs._handshake;
-    this->_buffer = rhs._buffer;
-    this->_encrypted_buffer = rhs._encrypted_buffer;
+    memcpy(this->_RSA_buf, rhs._RSA_buf, 1024);
     this->_key = rhs._key;
     memcpy(this->_iv, rhs._iv, 16);
-    memcpy(this->_RSA_buf, rhs._RSA_buf, 1024);
     this->_username = rhs._username;
     this->_password = rhs._password;
     this->_auth_tries = rhs._auth_tries;
     this->_authenticated = rhs._authenticated;
+    this->_buffer = rhs._buffer;
+    this->_send_buffer = rhs._send_buffer;
+    this->_encrypted_buffer = rhs._encrypted_buffer;
     if (rhs._secure) {
         if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
             throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
@@ -100,17 +159,17 @@ Client & Client::operator=(Client && rhs)
     this->_packetsize = rhs._packetsize;
     this->_secure = rhs._secure;
     this->_handshake = rhs._handshake;
-    this->_buffer = std::move(rhs._buffer);
-    this->_encrypted_buffer = std::move(rhs._encrypted_buffer);
-    this->_key = rhs._key;
-    rhs._key = nullptr;
-    memcpy(this->_iv, rhs._iv, 16);
     memcpy(this->_RSA_buf, rhs._RSA_buf, 1024);
+    this->_key = rhs._key;
+    memcpy(this->_iv, rhs._iv, 16);
     this->_username = rhs._username;
     this->_password = rhs._password;
     this->_auth_tries = rhs._auth_tries;
     this->_authenticated = rhs._authenticated;
     rhs._authenticated = false;
+    this->_buffer = std::move(rhs._buffer);
+    this->_send_buffer = std::move(rhs._send_buffer);
+    this->_encrypted_buffer = std::move(rhs._encrypted_buffer);
     this->_ctx = rhs._ctx;
     rhs._ctx = nullptr;
     this->_cipher = rhs._cipher;
@@ -127,24 +186,19 @@ Client::Return  Client::getPacketSize(void)
     {
         if (this->_encrypted_buffer[i] == '\n')
         {
-            if (i < 8 || i > 12) {
+            if (i < 8 || i > 12
+                || memcmp((void *)"Length ",(void *)&this->_encrypted_buffer[0], 7))
                 return Client::Return::KICK;
-            }
-            if (memcmp((void *)"Length ",(void *)&this->_encrypted_buffer[0], 7)) {
-                return Client::Return::KICK;
-            }
             pos = i;
             if (this->_encrypted_buffer[i - 1] == '\r')
                 pos = i - 1;
-            if (pos == 7) {
+            if (pos == 7)
                 return Client::Return::KICK;
-            }
             this->_encrypted_buffer[pos] = '\0';
             for (size_t j = 7; j < pos; ++j)
             {
-                if (this->_encrypted_buffer[j] < '0' || this->_encrypted_buffer[j] > '9') {
+                if (this->_encrypted_buffer[j] < '0' || this->_encrypted_buffer[j] > '9')
                     return Client::Return::KICK;
-                }
             }
             this->_packetsize = std::atoi(&this->_encrypted_buffer[7]);
             if (this->_packetsize > PIPE_BUF + 128 + 32)
@@ -153,13 +207,11 @@ Client::Return  Client::getPacketSize(void)
             return Client::Return::OK;
         }
         if ((this->_encrypted_buffer[i] < ' ' || this->_encrypted_buffer[i] > 'z')
-            && this->_encrypted_buffer[i] != '\r') {
+            && this->_encrypted_buffer[i] != '\r')
             return Client::Return::KICK;
-        }
     }
-    if (this->_encrypted_buffer.size() > 12) {
+    if (this->_encrypted_buffer.size() > 12)
         return Client::Return::KICK;
-    }
     return Client::Return::OK;
 }
 
@@ -184,19 +236,13 @@ Client::Return  Client::flush(std::shared_ptr<Tintin_reporter>& reporter)
         if (sub == "quit")
             return Client::Return::QUIT;
         if (this->_authenticated && sub == "log?") {
-            if (reporter->log("Client requested logs", LOG) != Tintin_reporter::Return::OK)
+            if (reporter->log("Client requested logs", Tintin_reporter::Loglevel::LOG) != Tintin_reporter::Return::OK
+                || reporter->send_logs(this->_send_buffer) != Tintin_reporter::Return::OK)
                 return Client::Return::QUIT;
-            if (reporter->send_logs(this->_send_buffer) != Tintin_reporter::Return::OK) {
-                return Client::Return::QUIT;
-            }
             this->_buffer.clear();
-            if (!this->encrypt(reporter)) {
+            if (!this->encrypt(reporter))
                 return Client::Return::KICK;
-            }
-            std::string header = "Length ";
-            header += std::to_string(this->_send_buffer.size());
-            header += "\n";
-            this->_send_buffer.insert(this->_send_buffer.begin(), header.begin(), header.end());
+            this->addHeader();
             return Client::Return::SEND;
         }
         if (reporter->client_log(sub) != Tintin_reporter::Return::OK)
@@ -206,6 +252,42 @@ Client::Return  Client::flush(std::shared_ptr<Tintin_reporter>& reporter)
     if (this->_buffer.size() > PIPE_BUF)
         return Client::Return::KICK;
     return Client::Return::OK;
+}
+
+Client::Return  Client::authenticate(std::shared_ptr<Tintin_reporter>& reporter) {
+    this->_buffer.clear();
+    if (!this->decrypt())
+        return Client::Return::KICK;
+    this->_auth_tries += 1;
+    if (this->_buffer != (this->_username + "\n" + this->_password + "\n")) {
+        if (this->_auth_tries >= 3)
+            this->_send_buffer = "AUTH KO - TOO MANY TRIES\n";
+        else
+            this->_send_buffer = "AUTH KO\n";
+        if (!this->encrypt(reporter))
+            return Client::Return::KICK;
+        this->addHeader();
+        this->_buffer.clear();
+        this->_packetsize = 0;
+        return Client::Return::SEND;
+    }
+    this->_buffer.clear();
+    this->_authenticated = true;
+    this->_send_buffer = "AUTH OK\n";
+    if (!this->encrypt(reporter))
+        return Client::Return::KICK;
+    this->addHeader();
+    this->_packetsize = 0;
+    return Client::Return::SEND;
+}
+
+Client::Return  Client::handshake(void) {
+    if (this->_packetsize > 1023)
+        return Client::Return::KICK;
+    memcpy(this->_RSA_buf, this->_encrypted_buffer.data(), this->_packetsize);
+    this->_RSA_buf[this->_packetsize] = '\0';
+    this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
+    return this->sendKey();
 }
 
 Client::Return  Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
@@ -219,102 +301,59 @@ Client::Return  Client::receive(std::shared_ptr<Tintin_reporter>& reporter)
     }
     if (this->_secure)
     {
-        this->_encrypted_buffer.insert(this->_encrypted_buffer.end(), this->_recv_buffer, &this->_recv_buffer[len]);
+        this->_encrypted_buffer.insert(this->_encrypted_buffer.end(), this->_recv_buffer, this->_recv_buffer + len);
         if (!this->_packetsize && (ret = this->getPacketSize()) != Client::Return::OK)
             return ret;
         while (this->_packetsize > 0 && this->_encrypted_buffer.size() >= static_cast<size_t>(this->_packetsize))
         {
-            if (!this->_handshake) {
-                if (this->_packetsize > 1023)
-                    return Client::Return::KICK;
-                memcpy(this->_RSA_buf, this->_encrypted_buffer.data(), this->_packetsize);
-                this->_RSA_buf[this->_packetsize] = '\0';
-                this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
-                return (this->sendKey());
-            }
-            if (!this->_authenticated) {
-                this->_buffer.clear();
-                if (!this->decrypt()) {
-                    return Client::Return::KICK;
-                }
-                this->_auth_tries += 1;
-                if (this->_buffer != (this->_username + "\n" + this->_password + "\n")) {
-                    if (this->_auth_tries >= 3) {
-                        this->_send_buffer = "AUTH KO - TOO MANY TRIES\n";
-                    }
-                    else {
-                        this->_send_buffer = "AUTH KO\n";
-                    }
-                    if (!this->encrypt(reporter)) {
-                        return Client::Return::KICK;
-                    }
-                    std::string header = "Length ";
-                    header += std::to_string(this->_send_buffer.size());
-                    header += "\n";
-                    this->_send_buffer.insert(this->_send_buffer.begin(), header.begin(), header.end());
-                    this->_buffer.clear();
-                    this->_packetsize = 0;
-                    return Client::Return::SEND;
-                }
-                else {
-                    this->_buffer.clear();
-                    this->_authenticated = true;
-                    this->_send_buffer = "AUTH OK\n";
-                    if (!this->encrypt(reporter))
-                        return Client::Return::KICK;
-
-                    std::string header = "Length ";
-                    header += std::to_string(this->_send_buffer.size());
-                    header += "\n";
-                    this->_send_buffer.insert(this->_send_buffer.begin(), header.begin(), header.end());
-                    this->_packetsize = 0;
-                    return Client::Return::SEND;
-                }
-            }
-            if (!this->decrypt())
+            if (!this->_handshake)
+                return this->handshake();
+            else if (!this->_authenticated)
+                return this->authenticate(reporter);
+            else if (!this->decrypt())
                 return Client::Return::KICK;
-           // this->increaseIV();
-            if ((ret = this->getPacketSize()) != Client::Return::OK)
+            else if ((ret = this->getPacketSize()) != Client::Return::OK)
                 return ret;
         }
     }
     else
         this->_buffer.insert(this->_buffer.end(), this->_recv_buffer, &this->_recv_buffer[len]);
-    return (this->flush(reporter));
+    return this->flush(reporter);
 }
 
 Client::Return  Client::sendKey(void) {
     size_t  outlen;
 
+    this->_packetsize = 0;
+
     //Putting public key received in BIO
-    BIO*        pubKey = BIO_new_mem_buf((void*) this->_RSA_buf, this->_packetsize);
+    std::shared_ptr<BIO>    pubKey(BIO_new_mem_buf((void*) this->_RSA_buf, this->_packetsize),
+                                    [](BIO* ptr) -> void {
+                                        if (ptr != nullptr)
+                                            BIO_free(ptr);
+                                    });
     if (!pubKey)
         return Client::Return::KICK;
 
-    this->_packetsize = 0;
     //Using the BIO to create an EVP_KEY
     EVP_PKEY* RSA_key = nullptr;
-    RSA_key = PEM_read_bio_PUBKEY(pubKey, &RSA_key, nullptr, nullptr);
+    RSA_key = PEM_read_bio_PUBKEY(pubKey.get(), &RSA_key, nullptr, nullptr);
     if (!RSA_key) {
-        BIO_free(pubKey);
         return Client::Return::KICK;
     }
     EVP_PKEY_CTX*   ctx = EVP_PKEY_CTX_new(RSA_key, nullptr);
     if (!ctx) {
-      BIO_free(pubKey);
       EVP_PKEY_free(RSA_key);
       return Client::Return::KICK;
     }
     if (EVP_PKEY_encrypt_init(ctx) <= 0) {
       EVP_PKEY_CTX_free(ctx);
       EVP_PKEY_free(RSA_key);
-      BIO_free(pubKey);
       return Client::Return::KICK;
     }
     if (EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
       EVP_PKEY_CTX_free(ctx);
       EVP_PKEY_free(RSA_key);
-      BIO_free(pubKey);
       return Client::Return::KICK;
     }
     std::string out;
@@ -323,7 +362,6 @@ Client::Return  Client::sendKey(void) {
     if (EVP_PKEY_encrypt(ctx, nullptr, &outlen, (const unsigned char*) out.data(), out.size()) <= 0) {
       EVP_PKEY_CTX_free(ctx);
       EVP_PKEY_free(RSA_key);
-      BIO_free(pubKey);
       return Client::Return::KICK;
     }
     unsigned char* out_tmp_buf = nullptr; 
@@ -333,24 +371,18 @@ Client::Return  Client::sendKey(void) {
     catch (std::exception const & e) {
       EVP_PKEY_CTX_free(ctx);
       EVP_PKEY_free(RSA_key);
-      BIO_free(pubKey);
       return Client::Return::KICK;
     }
     if (EVP_PKEY_encrypt(ctx, out_tmp_buf, &outlen, (const unsigned char*) out.data(), out.size()) <= 0) {
       delete [] out_tmp_buf;
       EVP_PKEY_CTX_free(ctx);
       EVP_PKEY_free(RSA_key);
-      BIO_free(pubKey);
       return Client::Return::KICK;
     }
-    this->_send_buffer = "Length ";
-    this->_send_buffer += std::to_string(outlen);
-    this->_send_buffer += "\n";
-    this->_send_buffer.insert(this->_send_buffer.end(), out_tmp_buf, out_tmp_buf + outlen);
+    this->addHeader();
     delete [] out_tmp_buf;
     EVP_PKEY_CTX_free(ctx);
     EVP_PKEY_free(RSA_key);
-    BIO_free(pubKey);
     this->_handshake = true;
     return Client::Return::SEND;
 }
@@ -438,7 +470,7 @@ bool    Client::encrypt(std::shared_ptr<Tintin_reporter>& reporter) {
     OSSL_PARAM params[2] = {OSSL_PARAM_END, OSSL_PARAM_END};
 
     if (!RAND_bytes(nextiv, 16)) {
-        if (reporter->log("Could not generate next iv for client secure connection", ERROR) != Tintin_reporter::Return::OK) {}
+        if (reporter->log("Could not generate next iv for client secure connection", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return false;
     }
     this->_send_buffer.insert(this->_send_buffer.end(), nextiv, nextiv + 16);
@@ -449,26 +481,26 @@ bool    Client::encrypt(std::shared_ptr<Tintin_reporter>& reporter) {
      * IV length parameter.
      */
     if (!EVP_EncryptInit_ex2(_ctx, _cipher, _key, _iv, params)) {
-        if (reporter->log("Could not initialize encryption for client secure connection", ERROR) != Tintin_reporter::Return::OK) {}
+        if (reporter->log("Could not initialize encryption for client secure connection", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return false;
     }
 
     /* Encrypt plaintext */
     if (!EVP_EncryptUpdate(_ctx, outbuf, &outlen, reinterpret_cast<unsigned char*>(_send_buffer.data()), static_cast<int>(_send_buffer.size()))) {
-        if (reporter->log("Could not encrypt buffer for client secure connection", ERROR) != Tintin_reporter::Return::OK) {}
+        if (reporter->log("Could not encrypt buffer for client secure connection", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return false;
     }
 
     /* Finalise: note get no output for GCM */
     if (!EVP_EncryptFinal_ex(_ctx, outbuf, &tmplen)) {
-        if (reporter->log("Could not finalize encryption for client secure connection", ERROR) != Tintin_reporter::Return::OK) {}
+        if (reporter->log("Could not finalize encryption for client secure connection", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return false;
     }
 
     /* Get tag */
     params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, outtag, 16);
     if (!EVP_CIPHER_CTX_get_params(_ctx, params)) {
-        if (reporter->log("Could not get tag", ERROR) != Tintin_reporter::Return::OK) {}
+        if (reporter->log("Could not get tag", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return false;
     }
 
@@ -480,10 +512,7 @@ bool    Client::encrypt(std::shared_ptr<Tintin_reporter>& reporter) {
     return true;
 }
 
-void    Client::increaseIV(void) {
-    for (int i = 15; i >= 0; --i) {
-        this->_iv[i] += 1;
-        if (this->_iv[i] != 0)
-            break;
-    }
+inline void    Client::addHeader(void) {
+    std::string header = "Length " + std::to_string(this->_send_buffer.size()) + "\n";
+    this->_send_buffer.insert(this->_send_buffer.begin(), header.begin(), header.end());
 }

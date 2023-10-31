@@ -6,26 +6,36 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:33:42 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/26 19:33:50 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/31 22:21:13 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef SERVER_HPP
-# define SERVER_HPP
-# include "Matt_daemon.hpp"
-# include "Tintin_reporter.hpp"
-# include "Client.hpp"
-# include <sys/epoll.h>
-# include <sys/types.h>
-# include <sys/socket.h>
-# include <unistd.h>
+#ifndef MATT_DAEMON_SERVER_HPP
+# define MATT_DAEMON_SERVER_HPP
+
+//std
 # include <cstring>
-# include <netinet/in.h>
-# include <arpa/inet.h>
 # include <map>
 # include <memory>
 # include <system_error>
+
+//C
+# include <unistd.h>
+
+//Unix
+# include <arpa/inet.h>
+# include <netinet/in.h>
+# include <sys/epoll.h>
+# include <sys/socket.h>
+# include <sys/types.h>
+
+//Openssl
 # include <openssl/rand.h>
+
+//Project specific
+# include "Client.hpp"
+# include "Matt_daemon.hpp"
+# include "Tintin_reporter.hpp"
 
 
 class Server

@@ -6,18 +6,24 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:21 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/31 21:42:09 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/31 22:16:26 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef TINTIN_REPORTER_HPP
-# define TINTIN_REPORTER_HPP
-# include <fstream>
+#ifndef MATT_DAEMON_TINTIN_REPORTER_HPP
+# define MATT_DAEMON_TINTIN_REPORTER_HPP
+
+//std
+# include <climits>
+# include <ctime>
 # include <exception>
+# include <filesystem>
+# include <fstream>
+# include <iostream>
 # include <stdexcept>
 # include <string>
-# include <iostream>
-# include <ctime>
+
+//Project specific
 # include "Matt_daemon.hpp"
 
 class Tintin_reporter
@@ -28,6 +34,11 @@ class Tintin_reporter
             FILE_REMOVED,
             SYSTEM_ERROR,
             OK  
+        };
+        enum class Loglevel {
+            LOG,
+            INFO,
+            ERROR
         };
 
         //Constructors
@@ -47,8 +58,8 @@ class Tintin_reporter
         //Member functions
         [[nodiscard]] Tintin_reporter::Return   client_log(std::string const & str);
         [[nodiscard]] Tintin_reporter::Return   client_log(std::string && str);
-        [[nodiscard]] Tintin_reporter::Return   log(std::string && str, enum Loglevel level);
-        [[nodiscard]] Tintin_reporter::Return   log(std::string const & str, enum Loglevel level);
+        [[nodiscard]] Tintin_reporter::Return   log(std::string && str, Tintin_reporter::Loglevel level);
+        [[nodiscard]] Tintin_reporter::Return   log(std::string const & str, Tintin_reporter::Loglevel level);
         [[nodiscard]] Tintin_reporter::Return   send_logs(std::string & send_buffer);
     
     private:

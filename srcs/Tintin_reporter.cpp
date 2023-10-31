@@ -6,13 +6,11 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:59:28 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/30 21:36:10 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/31 22:14:54 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Tintin_reporter.hpp"
-#include <climits>
-#include <filesystem>
 
 Tintin_reporter::Tintin_reporter(void) noexcept {}
 
@@ -104,14 +102,14 @@ Tintin_reporter& Tintin_reporter::operator=(Tintin_reporter && rhs)
 
 Tintin_reporter::Return	Tintin_reporter::client_log(std::string && str)
 {
-	return (this->log("User input: " + str, LOG));
+	return (this->log("User input: " + str, Tintin_reporter::Loglevel::LOG));
 }
 Tintin_reporter::Return	Tintin_reporter::client_log(std::string const & str)
 {
-	return (this->log("User input: " + str, LOG));
+	return (this->log("User input: " + str, Tintin_reporter::Loglevel::LOG));
 }
 
-Tintin_reporter::Return	Tintin_reporter::log(std::string && str, enum Loglevel level)
+Tintin_reporter::Return	Tintin_reporter::log(std::string && str, Tintin_reporter::Loglevel level)
 {
 	std::string	log;
 
@@ -128,10 +126,10 @@ Tintin_reporter::Return	Tintin_reporter::log(std::string && str, enum Loglevel l
 	}
 	switch (level)
 	{
-		case ERROR:
+        case Tintin_reporter::Loglevel::ERROR:
 			log += " [ ERROR ] - Matt_daemon: " + str;
 			break ;
-		case INFO:
+		case Tintin_reporter::Loglevel::INFO:
 			log += " [ INFO ] - Matt_daemon: " + str;
 			break ;
 		default:
@@ -142,7 +140,7 @@ Tintin_reporter::Return	Tintin_reporter::log(std::string && str, enum Loglevel l
 	return Tintin_reporter::Return::OK ;
 }
 
-Tintin_reporter::Return	Tintin_reporter::log(std::string const & str, enum Loglevel level)
+Tintin_reporter::Return	Tintin_reporter::log(std::string const & str, Tintin_reporter::Loglevel level)
 {
 	std::string	log;
 
@@ -159,10 +157,10 @@ Tintin_reporter::Return	Tintin_reporter::log(std::string const & str, enum Logle
 	}
 	switch (level)
 	{
-		case ERROR:
+		case Tintin_reporter::Loglevel::ERROR:
 			log += " [ ERROR ] - Matt_daemon: " + str;
 			break ;
-		case INFO:
+		case Tintin_reporter::Loglevel::INFO:
 			log += " [ INFO ] - Matt_daemon: " + str;
 			break ;
 		default:

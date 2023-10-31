@@ -6,32 +6,42 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:17:35 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/26 21:11:29 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/31 23:15:11 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef CLIENT_HPP
-# define CLIENT_HPP
-# include "Matt_daemon.hpp"
-# include "Tintin_reporter.hpp"
-# include <string>
+#ifndef MATT_DAEMON_CLIENT_HPP
+# define MATT_DAEMON_CLIENT_HPP
+
+//std
 # include <climits>
-# include <stddef.h>
 # include <cstdlib>
 # include <cstring>
 # include <iomanip>
-# include <sys/types.h>
-# include <sys/socket.h>
-# include <unistd.h>
 # include <memory>
+# include <string>
+# include <system_error>
 # include <vector>
+
+//C
+# include <stddef.h>
+# include <unistd.h>
+
+//Unix
+# include <sys/socket.h>
+# include <sys/types.h>
+
+//Openssl
 # include <openssl/bio.h>
 # include <openssl/core_names.h>
-# include <openssl/rand.h>
 # include <openssl/evp.h>
 # include <openssl/pem.h>
+# include <openssl/rand.h>
 # include <openssl/rsa.h>
-# include <system_error>
+
+//Project specific
+# include "Matt_daemon.hpp"
+# include "Tintin_reporter.hpp"
 
 class Client
 {
@@ -80,10 +90,12 @@ class Client
 
         Client::Return      getPacketSize(void);
         Client::Return      flush(std::shared_ptr<Tintin_reporter>& reporter);
+        Client::Return      handshake(void);
         Client::Return      sendKey(void);
         bool                decrypt(void);
         bool                encrypt(std::shared_ptr<Tintin_reporter>& reporter);
-        void                increaseIV(void);
+        Client::Return      authenticate(std::shared_ptr<Tintin_reporter>& reporter);
+        inline void         addHeader(void);
 };
 
 #endif

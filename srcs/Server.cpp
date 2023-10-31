@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:42:18 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/26 22:45:41 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/10/31 22:07:08 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -277,12 +277,12 @@ void    Server::serve(void)
     memset(this->_events, 0, sizeof(struct epoll_event) * 5);
     if (this->_sockfd  > 0 && !this->epoll_add(this->_sockfd, EPOLLIN))
     {
-        if (this->_reporter->log("Could not initialize epoll on socket", ERROR) != Tintin_reporter::Return::OK) {}
+        if (this->_reporter->log("Could not initialize epoll on socket", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return ;
     }
     if (this->_securesockfd > 0 && !this->epoll_add(this->_securesockfd, EPOLLIN))
     {
-        if (this->_reporter->log("Could not initialize epoll on socket", ERROR) != Tintin_reporter::Return::OK) {}
+        if (this->_reporter->log("Could not initialize epoll on socket", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return ;
     }
 
@@ -291,7 +291,7 @@ void    Server::serve(void)
         nb_events = epoll_wait(this->_epollfd, this->_events, 5, 1000 * 60 * 15);
         if (g_sig > 0)
         {
-            if (this->_reporter->log("Signal handler.", INFO) != Tintin_reporter::Return::OK) {}
+            if (this->_reporter->log("Signal handler.", Tintin_reporter::Loglevel::INFO) != Tintin_reporter::Return::OK) {}
             return ;
         }
         if (nb_events > 0)
@@ -317,7 +317,7 @@ void    Server::serve(void)
                     switch (it->second.receive(this->_reporter))
                     {
                         case Client::Return::QUIT:
-                            if (this->_reporter->log("Request quit.", INFO) != Tintin_reporter::Return::OK) {}
+                            if (this->_reporter->log("Request quit.", Tintin_reporter::Loglevel::INFO) != Tintin_reporter::Return::OK) {}
                             return ;
                             break ;
                         case Client::Return::KICK:
@@ -336,13 +336,13 @@ void    Server::serve(void)
                     new_connection = accept(this->_sockfd, NULL, NULL);
                     if (new_connection <= 0)
                     {
-                        if (this->_reporter->log("Could not accept new client", ERROR) != Tintin_reporter::Return::OK)
+                        if (this->_reporter->log("Could not accept new client", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
                             return ;
                     }
                     if (this->_clients.size() == 3)
                     {
                         close(new_connection);
-                        if (this->_reporter->log("Connection attempt while maximum capacity of 3 connected clients has already been reached", ERROR) != Tintin_reporter::Return::OK)
+                        if (this->_reporter->log("Connection attempt while maximum capacity of 3 connected clients has already been reached", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
                             return ;
                         continue ;
                     }
@@ -354,13 +354,13 @@ void    Server::serve(void)
                     new_connection = accept(this->_securesockfd, NULL, NULL);
                     if (new_connection <= 0)
                     {
-                        if (this->_reporter->log("Could not accept new client on secure port", ERROR) != Tintin_reporter::Return::OK)
+                        if (this->_reporter->log("Could not accept new client on secure port", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
                             return ;
                     }
                     if (this->_clients.size() == 3)
                     {
                         close(new_connection);
-                        if (this->_reporter->log("Connection attempt while maximum capacity of 3 connected clients has already been reached", ERROR) != Tintin_reporter::Return::OK)
+                        if (this->_reporter->log("Connection attempt while maximum capacity of 3 connected clients has already been reached", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
                             return ;
                         continue ;
                     }
@@ -371,7 +371,7 @@ void    Server::serve(void)
                     }
                     catch (std::system_error const & e)
                     {
-                        if (this->_reporter->log("Could not generate iv for Client", ERROR) != Tintin_reporter::Return::OK)
+                        if (this->_reporter->log("Could not generate iv for Client", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
                             return ;
                     }
                 }
