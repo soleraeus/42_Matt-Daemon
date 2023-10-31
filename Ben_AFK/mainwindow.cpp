@@ -240,8 +240,13 @@ void MainWindow::timeout() {
 
 void MainWindow::sendLine() {
     if (isSecure) {
+	    	bool needFlush = false;
 		qDebug() << "In secure mode";
 		QByteArray msg = ui->lineChat->text().toUtf8() + "\n";
+		if (msg == "log?\n") {
+			qDebug() << "User sent log? !";
+			needFlush = true;
+		}
 		qDebug() << "~~~~~~~~~~~~~~~~~";
 		qDebug() << msg;
 		qDebug() << "Will encrypt msg";
@@ -254,6 +259,21 @@ void MainWindow::sendLine() {
 		header += "\n";
 		msg.insert(0, header.data(), header.size());
 		socket->write(msg);
+		if (needFlush) {
+			qDebug() << "Gonna wait for ready read";
+			if (socket->waitForReadyRead(1000)) {
+				qDebug() << "Got the logs !";
+				QByteArray buf = socket->readAll();
+				int packetSize = getPacketSize(buf);
+				secured_client->decrypt(buf, packetSize);
+			} else {
+				qDebug() << "Timed out on log ...";
+				ui->stackedWidget->setCurrentIndex(PageIndex::Choice);
+				if (socket)
+					socket->disconnectFromHost();
+			}
+
+		}
         // Encrypt the message
     } else {
         socket->write(ui->lineChat->text().toUtf8() + "\n");
