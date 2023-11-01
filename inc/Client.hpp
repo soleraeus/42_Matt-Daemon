@@ -17,6 +17,7 @@
 # include <climits>
 # include <cstdlib>
 # include <cstring>
+# include <functional>
 # include <iomanip>
 # include <memory>
 # include <string>
@@ -70,32 +71,32 @@ class Client
 
     private:
 
-        int                 _fd;
-        int                 _packetsize;
-        bool                _secure;
-        bool                _handshake;
-        unsigned char       _RSA_buf[1024];
-        unsigned char*      _key;
-        unsigned char       _iv[16];
-        std::string         _username;
-        std::string         _password;
-        int                 _auth_tries; 
-        bool                _authenticated;
-        char                _recv_buffer[PIPE_BUF + 1];
-        std::string         _buffer;
-        std::string         _send_buffer;
-        std::vector<char>   _encrypted_buffer;
-        EVP_CIPHER_CTX*     _ctx;
-        EVP_CIPHER*         _cipher;
+        std::shared_ptr<int>			_fd;
+        int								_packetsize;
+        bool							_secure;
+        bool							_handshake;
+        unsigned char					_RSA_buf[1024];
+        unsigned char*					_key;
+        unsigned char					_iv[16];
+        std::string						_username;
+        std::string						_password;
+        int								_auth_tries; 
+        bool							_authenticated;
+        char							_recv_buffer[PIPE_BUF + 1];
+        std::string						_buffer;
+        std::string						_send_buffer;
+        std::vector<char>				_encrypted_buffer;
+        std::shared_ptr<EVP_CIPHER_CTX>	_ctx;
+        EVP_CIPHER*						_cipher;
 
-        Client::Return      getPacketSize(void);
-        Client::Return      flush(std::shared_ptr<Tintin_reporter>& reporter);
-        Client::Return      handshake(void);
-        Client::Return      sendKey(void);
-        bool                decrypt(void);
-        bool                encrypt(std::shared_ptr<Tintin_reporter>& reporter);
-        Client::Return      authenticate(std::shared_ptr<Tintin_reporter>& reporter);
-        inline void         addHeader(void);
+        Client::Return					getPacketSize(void);
+        Client::Return					flush(std::shared_ptr<Tintin_reporter>& reporter);
+        Client::Return					handshake(void);
+        Client::Return					sendKey(void);
+        bool							decrypt(void);
+        bool							encrypt(std::shared_ptr<Tintin_reporter>& reporter);
+        Client::Return					authenticate(std::shared_ptr<Tintin_reporter>& reporter);
+        void							addHeader(void);
 };
 
 #endif
