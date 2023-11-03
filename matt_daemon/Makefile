@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/09/27 17:55:22 by tnaton            #+#    #+#              #
-#    Updated: 2023/11/03 11:13:09 by tnaton           ###   ########.fr        #
+#    Updated: 2023/11/03 13:07:16 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -76,7 +76,7 @@ $(OBJDIR):
 .SECONDARY: $(OBJS)
 
 $(OPENSSL):
-	test -d ../libs/openssl-3.0.11 || (cd libs; tar -xvf ../openssl-3.0.11.tar.gz)
+	test -d ../libs/openssl-3.0.11 || (cd ../libs; tar -xvf openssl-3.0.11.tar.gz)
 	cd ../libs/openssl-3.0.11; ./config no-idea no-camellia no-seed no-bf no-cast no-des no-rc2 no-rc4 no-rc5 no-md2 no-md4 no-mdc2 no-dsa no-dh no-ec no-ecdsa no-ecdh no-sock no-ssl3 no-err no-engine; make depend; make build_generated libcrypto.a
 
 .PHONY: all
