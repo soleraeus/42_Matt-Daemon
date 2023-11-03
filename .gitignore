@@ -13,3 +13,6 @@ Ben_AFK
 !Ben_AFK/
 moc_*
 openssl-3.0.11/
+.qmake.stash
+Ben_AFK/Makefile
+Ben_AFK/ui_mainwindow.h
