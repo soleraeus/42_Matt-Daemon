@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/11/03 11:56:11 by tnaton            #+#    #+#              #
-#    Updated: 2023/11/03 12:43:05 by tnaton           ###   ########.fr        #
+#    Updated: 2023/11/03 15:22:30 by tnaton           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -16,7 +16,7 @@ BEN_AFK = Ben_AFK/Ben_AFK
 
 BEN_AFK_CLI = Ben_AFK_cli/Ben_AFK_cli
 
-$(NAME) : | $(BEN_AFK) $(BEN_AFK_CLI)
+$(NAME) : 
 	$(MAKE) -C matt_daemon
 
 $(BEN_AFK) :
@@ -26,7 +26,7 @@ $(BEN_AFK_CLI):
 	$(MAKE) -C Ben_AFK_cli
 
 .PHONY: all
-all: $(NAME)
+all: $(NAME) $(BEN_AFK_CLI) $(BEN_AFK)
 
 .PHONY: clean
 clean:
