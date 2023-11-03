@@ -6,15 +6,17 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/31 22:31:38 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/03 19:29:26 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 //std
 #include <csignal>
+#include <cstring>
 #include <exception>
 #include <iostream>
 #include <memory>
+#include <tuple>
 #include <variant>
 
 //C
@@ -202,6 +204,85 @@ static std::variant<int, bool>  lockFile(std::shared_ptr<Tintin_reporter>& repor
     return lock;
 }
 
+std::tuple<bool, bool, int> daemonize(std::shared_ptr<Tintin_reporter>& reporter) {
+    pid_t   pid;
+    int     fds[2];
+
+    if (pipe(fds) == -1) {
+        std::cerr << "Could not enter daemon mode." << std::endl;
+        log(reporter, "Could not enter deamon mode.", Tintin_reporter::Loglevel::ERROR);
+        return std::tuple<bool, bool, int>(true, true, 1);
+    }
+    pid = fork();
+    if (pid == -1) {
+        std::cerr << "Could not enter daemon mode." << std::endl;
+        log(reporter, "Could not enter deamon mode.", Tintin_reporter::Loglevel::ERROR);
+        close(fds[0]);
+        close(fds[1]);
+        return std::tuple<bool, bool, int>(true, true, 1);
+    }
+    if (pid > 0) {
+        char    msg[PIPE_BUF];
+        
+        close(fds[1]);
+        ssize_t ret = read(fds[0], msg, PIPE_BUF);
+        close(fds[0]);
+        if (ret <= 0) {
+            std::cerr << "Could not read from pipe." << std::endl;
+            return std::tuple<bool, bool, int>(false, true, 1);
+        }
+        else {
+            msg[ret] = '\0';
+            std::cout << msg << std::endl;
+            if (strncmp("ERROR", msg, 5) == 0)
+                return std::tuple<bool, bool, int>(false, true, 1);
+            else
+                return std::tuple<bool, bool, int>(false, true, 0);
+        }
+    }
+    else {
+        close(fds[0]);
+        pid = setsid();
+        if (pid == -1) {
+            log(reporter, "Could not enter deamon mode.", Tintin_reporter::Loglevel::ERROR);
+            if (write(fds[1], "ERROR: Could not setsid", strlen("ERROR: Could not setsid"))) {}
+            close(fds[1]);
+            return std::tuple<bool, bool, int>(true, true, 1); 
+        }
+        pid = fork();
+        if (pid == -1) {
+            log(reporter, "Could not enter deamon mode.", Tintin_reporter::Loglevel::ERROR);
+            if (write(fds[1], "ERROR: Could not fork", strlen("ERROR: Could not fork"))) {}
+            close(fds[1]);
+            return std::tuple<bool, bool, int>(true, true, 1); 
+        }
+        if (pid > 0) {
+            close(fds[1]);
+            return std::tuple<bool, bool, int>(false, true, 0); 
+        }
+        int devNull = open("/dev/null", O_RDWR);
+        if (devNull <= 0) {
+            log(reporter, "Could not enter deamon mode.", Tintin_reporter::Loglevel::ERROR);
+            if (write(fds[1], "ERROR: Could not open /dev/null", strlen("ERROR: Could not open /dev/null"))) {}
+            close(fds[1]);
+            return std::tuple<bool, bool, int>(true, true, 1); 
+        } 
+        dup2(devNull, 0);
+        dup2(devNull, 1);
+        dup2(devNull, 2);
+        close(devNull);
+        pid = getpid();
+
+        std::string info = "INFO: started. PID: ";
+        info += std::to_string(pid);
+        info += ".";
+        if (write(fds[1], info.data(), info.size())) {}
+        close(fds[1]);
+        log(reporter, info.c_str(), Tintin_reporter::Loglevel::INFO);
+        return std::tuple<bool, bool, int>(false, false, 0); 
+    }
+}
+
 int	main(int ac, char **av)
 {
     Server::ServerType                  serverType;
@@ -268,7 +349,25 @@ int	main(int ac, char **av)
         exit_procedure(reporter, lock);
         return 1;
     }
-    //TODO deamonize
+
+    log(reporter, "Entering Daemon mode.", Tintin_reporter::Loglevel::INFO);
+    bool    exitProcedure;
+    bool    exitProcess;
+    int     exitStatus;
+
+    //Since auto is a monstruosity that destroys the beauty of a strongly typed language such as C++
+    //I refuse to use structured binding
+    std::tie(exitProcedure, exitProcess, exitStatus) = daemonize(reporter);
+    if (exitProcedure)
+    {
+        exit_procedure(reporter, lock);
+        return exitStatus;
+    }
+    else if (exitProcess) {
+        close(lock);
+        return exitStatus;
+    }
+
 	server.serve();
 	exit_procedure(reporter, lock);
 
