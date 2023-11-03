@@ -12,7 +12,7 @@ You will also need [gcc >= 10](https://gcc.gnu.org), perl-devel (for openssl) an
 
 It starts a daemon listening on port 4242 which logs every strings sent to it. Options allow you to start a more secure server on port 4343 using a hybrid encryption system: RSA for key exchange and AES256GCM for encrypted communication thereafter. This secure port enforces authentication and requires you to set a username and password.
 
-The valid options are :
+The valid options are :<br>
  `-h` : Displace the help page<br>
  `-s` : Start a secure server on port 4343 in addition to the standard server running on port 4242<br>
  `-x` : Start the secure server on port 4343 only and do not start the standard one on port 4242. This option is not compatible with -s, only one of these options should be used.<br>
