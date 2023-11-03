@@ -23,13 +23,13 @@ There are two clients : `Ben_AFK` and `Ben_AFK_cli`
 
 #### Ben_AFK
 
-`Ben_AFK` is a Qt based application, which allows you to connect to the remote server and send message in either mode.
+`Ben_AFK` is a Qt based graphical application, which allows you to connect to the remote server and send message in either mode.
 It also allows you to check the logfile from the application if you are in secure mode.
 To run it, you just need to execute it after compilation. The rest is self-explanatory.
 
 #### Ben_AFK_cli
 
-`Ben_AFK_cli` is a cli program that allows you to send messages through the terminal. 
+`Ben_AFK_cli` is a command line interface program that allows you to send messages through the terminal. 
 You can request the logfile by sending `log?` if you are in secure mode.
 To run it, you need to give him the IP of the target. You can also give the option `-s` to connect in secure mode.
 
