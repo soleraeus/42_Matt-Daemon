@@ -13,9 +13,9 @@ You will also need [gcc >= 10](https://gcc.gnu.org), perl-devel (for openssl) an
 It starts a daemon listening on port 4242 which logs every strings sent to it. Options allow you to start a more secure server on port 4343 using a hybrid encryption system: RSA for key exchange and AES256GCM for encrypted communication thereafter. This secure port enforces authentication and requires you to set a username and password.
 
 The valid options are :
- `-h` : Displace the help page
- `-s` : Start a secure server on port 4343 in addition to the standard server running on port 4242
- `-x` : Start the secure server on port 4343 only and do not start the standard one on port 4242. This option is not compatible with -s, only one of these options should be used.
+ `-h` : Displace the help page<br>
+ `-s` : Start a secure server on port 4343 in addition to the standard server running on port 4242<br>
+ `-x` : Start the secure server on port 4343 only and do not start the standard one on port 4242. This option is not compatible with -s, only one of these options should be used.<br>
 
 ### Client execution
 
@@ -33,9 +33,9 @@ To run it, you just need to execute it after compilation. The rest is self-expla
 You can request the logfile by sending `log?` if you are in secure mode.
 To run it, you need to give him the IP of the target. You can also give the option `-s` to connect in secure mode.
 
-Usage:
-./Ben_AFK_cli [OPTION] IP
-Valid options:
-  -h: Display the help page
-  -s: Connect to the secure Matt_daemon service running at IP.
+Usage: <br>
+`./Ben_AFK_cli [OPTION] IP`<br>
+Valid options:<br>
+  `-h`: Display the help page<br>
+  `-s`: Connect to the secure Matt_daemon service running at IP.<br>
 
