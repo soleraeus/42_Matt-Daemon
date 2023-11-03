@@ -4,7 +4,7 @@ Matt_daemon is a daemon logging server that allows clients to connect and send m
 ### Installing
 
 To install the project, you need to first clone the project.
-```git clone /https://github.com/soleraeus/42Matt-Daemon.git```
+```git clone https://github.com/soleraeus/42Matt-Daemon.git```
 
 You will also need [gcc >= 10](https://gcc.gnu.org), perl-devel (for openssl) and Qt6.6 (for graphical client)
 
