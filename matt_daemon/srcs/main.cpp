@@ -370,6 +370,8 @@ int	main(int ac, char **av)
 
 	server.serve();
 	exit_procedure(reporter, lock);
-
+    close(0);
+    close(1);
+    close(2);
 	return 0;
 }

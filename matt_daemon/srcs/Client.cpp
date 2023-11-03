@@ -225,7 +225,7 @@ Client::Return  Client::flush(std::shared_ptr<Tintin_reporter>& reporter)
         if (sub == "quit")
             return Client::Return::QUIT;
         if (this->_authenticated && sub == "log?") {
-            if (reporter->log("Client requested logs", Tintin_reporter::Loglevel::LOG) != Tintin_reporter::Return::OK
+            if (reporter->log("Client requested logs", Tintin_reporter::Loglevel::INFO) != Tintin_reporter::Return::OK
                 || reporter->send_logs(this->_send_buffer) != Tintin_reporter::Return::OK)
                 return Client::Return::QUIT;
             this->_buffer.clear();
