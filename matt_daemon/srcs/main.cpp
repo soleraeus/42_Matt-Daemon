@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/11/04 12:35:47 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 13:49:13 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -356,13 +356,19 @@ int	main(int ac, char **av)
     }
 
 	Server server = Server(reporter);
-	if (!server.create_server(serverType, username, password))
-	{
-		std::cerr << "Could not create server" << std::endl;
-		log(reporter, "Could not create server", Tintin_reporter::Loglevel::ERROR);
-		exit_procedure(reporter, lock);
-		return 1;
-	}
+    try {
+        if (!server.create_server(serverType, username, password))
+        {
+            std::cerr << "Could not create server" << std::endl;
+            log(reporter, "Could not create server", Tintin_reporter::Loglevel::ERROR);
+            exit_procedure(reporter, lock);
+            return 1;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Could not create server: " << e.what() << std::endl;
+        exit_procedure(reporter, lock);
+        return 1;
+    }
     if (!log(reporter, "Server created.", Tintin_reporter::Loglevel::INFO)) {
         exit_procedure(reporter, lock);
         return 1;
@@ -386,7 +392,12 @@ int	main(int ac, char **av)
         return exitStatus;
     }
 
-	server.serve();
+    try {
+	    server.serve();
+    }
+    catch (const std::exception& e) {
+        log(reporter, e.what(), Tintin_reporter::Loglevel::ERROR);
+    }
 	exit_procedure(reporter, lock);
     close(0);
     close(1);

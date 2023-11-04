@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:42:18 by bdetune           #+#    #+#             */
-/*   Updated: 2023/11/04 13:38:59 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 14:34:31 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -215,12 +215,7 @@ bool    Server::epoll_mod(int fd, uint32_t events) {
     return (epoll_ctl(*(this->_epollfd), EPOLL_CTL_MOD, fd, &this->_init) != -1);
 }
 
-void    Server::serve(void)
-{
-    int                             new_connection = 0;
-    int                             nb_events = 0;
-    std::map<int, Client>::iterator it;
-
+bool    Server::initServer(void) {
     if (!this->_reporter)
         throw std::logic_error("No reporter associated with server");
     if (*(this->_epollfd) <= 0 || (*(this->_sockfd) <= 0 && *(this->_securesockfd) <= 0))
@@ -229,103 +224,137 @@ void    Server::serve(void)
     if (*(this->_sockfd) > 0 && !this->epoll_add(*(this->_sockfd), EPOLLIN))
     {
         if (this->_reporter->log("Could not initialize epoll on socket", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
-        return ;
+        return false;
     }
     if (*(this->_securesockfd) > 0 && !this->epoll_add(*(this->_securesockfd), EPOLLIN))
     {
         if (this->_reporter->log("Could not initialize epoll on socket", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
-        return ;
+        return false ;
     }
+    return true;
+}
 
-    while (true)
+void    Server::sendToClient(std::map<int, Client>::iterator& it, int index) {
+    switch (it->second.send()) {
+        case Client::Return::KICK:
+            this->epoll_del(this->_events[index].data.fd);
+            this->_clients.erase(it);
+            break ;
+        case Client::Return::SEND:
+            break ;
+        [[likely]] default:
+            if (!this->epoll_mod(this->_events[index].data.fd, EPOLLIN)) {
+                if (this->_reporter->log("Could not modifiy epoll event on client", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
+                this->epoll_del(this->_events[index].data.fd);
+                this->_clients.erase(it);
+            }
+            break;
+    }
+}
+
+Client::Return  Server::receiveFromClient(std::map<int, Client>::iterator& it, int index) {
+    switch (it->second.receive(this->_reporter))
     {
-        nb_events = epoll_wait(*(this->_epollfd), this->_events, 5, 1000 * 60 * 15);
-        if (g_sig > 0)
-        {
+        case Client::Return::QUIT:
+            if (this->_reporter->log("Request quit.", Tintin_reporter::Loglevel::INFO) != Tintin_reporter::Return::OK) {}
+            return Client::Return::QUIT;
+            break ;
+        case Client::Return::KICK:
+            this->epoll_del(this->_events[index].data.fd);
+            this->_clients.erase(it);
+            break ;
+        case Client::Return::SEND:
+            if (!this->epoll_mod(this->_events[index].data.fd, EPOLLOUT)) {
+                if (this->_reporter->log("Could not modifiy epoll event on client", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
+                this->epoll_del(this->_events[index].data.fd);
+                this->_clients.erase(it);
+            }
+            break ;
+        [[likely]] default:
+            break;
+    }
+    return Client::Return::OK;
+}
+
+bool    Server::acceptNewStandardConnection(void) {
+    int new_connection = accept(*(this->_sockfd), NULL, NULL);
+    if (new_connection <= 0) {
+        if (this->_reporter->log("Could not accept new client", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
+            return false;
+    }
+    if (this->_clients.size() == 3) {
+        close(new_connection);
+        if (this->_reporter->log("Connection attempt while maximum capacity of 3 connected clients has already been reached", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
+            return false;
+        return true ;
+    }
+    this->_clients[new_connection] = Client(new_connection);
+    if (!this->epoll_add(new_connection, EPOLLIN)) {
+        if (this->_reporter->log("Could not add client to epoll", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
+        return false;
+    }
+    return true;
+}
+
+bool    Server::acceptNewSecureConnection(void) {
+    int new_connection = accept(*(this->_securesockfd), NULL, NULL);
+    if (new_connection <= 0) {
+        if (this->_reporter->log("Could not accept new client on secure port", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
+            return false;
+    }
+    if (this->_clients.size() == 3) {
+        close(new_connection);
+        if (this->_reporter->log("Connection attempt while maximum capacity of 3 connected clients has already been reached", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
+            return false;
+        return true ;
+    }
+    try {
+        this->_clients.insert(std::pair<int, Client>(new_connection, Client(new_connection, this->_key, this->_username, this->_password)));
+    }
+    catch (std::system_error const & e) {
+        if (this->_reporter->log("Could not generate iv for Client", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
+            return false;
+    }
+    if (!this->epoll_add(new_connection, EPOLLIN)) {
+        if (this->_reporter->log("Could not add client to epoll", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
+        return false;
+    }
+    return true;
+}
+
+void    Server::serve(void)
+{
+    std::map<int, Client>::iterator it;
+
+    if(!this->initServer())
+        return ;
+    while (true) {
+        int nb_events = epoll_wait(*(this->_epollfd), this->_events, 5, 1000 * 60 * 15);
+        if (g_sig > 0) {
             if (this->_reporter->log("Signal handler.", Tintin_reporter::Loglevel::INFO) != Tintin_reporter::Return::OK) {}
             return ;
         }
-        if (nb_events > 0)
-        {
-            for (int i = 0; i < nb_events; ++i)
-            {
-                [[likely]] if ((it = this->_clients.find(this->_events[i].data.fd)) != this->_clients.end())
-                {
-                    if (this->_events[i].events & EPOLLOUT) {
-                        switch (it->second.send()) {
-                            case Client::Return::KICK:
-                                this->epoll_del(this->_events[i].data.fd);
-                                this->_clients.erase(it);
-                                break ;
-                            case Client::Return::SEND:
-                                break ;
-                            [[likely]] default:
-                                this->epoll_mod(this->_events[i].data.fd, EPOLLIN);
-                                break;
-                        }
-                        continue ;
-                    }
-                    switch (it->second.receive(this->_reporter))
-                    {
-                        case Client::Return::QUIT:
-                            if (this->_reporter->log("Request quit.", Tintin_reporter::Loglevel::INFO) != Tintin_reporter::Return::OK) {}
-                            return ;
-                            break ;
-                        case Client::Return::KICK:
-                            this->epoll_del(this->_events[i].data.fd);
-                            this->_clients.erase(it);
-                            break ;
-                        case Client::Return::SEND:
-                            this->epoll_mod(this->_events[i].data.fd, EPOLLOUT);
-                            break ;
-                        [[likely]] default:
-                            break;
-                    }
+        for (int i = 0; i < nb_events; ++i) {
+            [[likely]] if ((it = this->_clients.find(this->_events[i].data.fd)) != this->_clients.end()) {
+                if (this->_events[i].events & EPOLLOUT) {
+                    this->sendToClient(it, i);
                 }
-                else if (this->_events[i].data.fd == *(this->_sockfd))
-                {
-                    new_connection = accept(*(this->_sockfd), NULL, NULL);
-                    if (new_connection <= 0)
-                    {
-                        if (this->_reporter->log("Could not accept new client", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
-                            return ;
-                    }
-                    if (this->_clients.size() == 3)
-                    {
-                        close(new_connection);
-                        if (this->_reporter->log("Connection attempt while maximum capacity of 3 connected clients has already been reached", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
-                            return ;
-                        continue ;
-                    }
-                    this->_clients[new_connection] = Client(new_connection);
-                    this->epoll_add(new_connection, EPOLLIN);
+                else if (this->_events[i].events & EPOLLIN) {
+                    if (this->receiveFromClient(it, i) == Client::Return::QUIT)
+                        return ;
                 }
-                else if (this->_events[i].data.fd == *(this->_securesockfd))
-                {
-                    new_connection = accept(*(this->_securesockfd), NULL, NULL);
-                    if (new_connection <= 0)
-                    {
-                        if (this->_reporter->log("Could not accept new client on secure port", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
-                            return ;
-                    }
-                    if (this->_clients.size() == 3)
-                    {
-                        close(new_connection);
-                        if (this->_reporter->log("Connection attempt while maximum capacity of 3 connected clients has already been reached", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
-                            return ;
-                        continue ;
-                    }
-                    try 
-                    {
-                        this->_clients.insert(std::pair<int, Client>(new_connection, Client(new_connection, this->_key, this->_username, this->_password)));
-                        this->epoll_add(new_connection, EPOLLIN);
-                    }
-                    catch (std::system_error const & e)
-                    {
-                        if (this->_reporter->log("Could not generate iv for Client", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
-                            return ;
-                    }
+                else {
+                    this->epoll_del(this->_events[i].data.fd);
+                    this->_clients.erase(it);
                 }
+            }
+            else if (this->_events[i].data.fd == *(this->_sockfd)) {
+                if (!this->acceptNewStandardConnection())
+                    return ;
+            }
+            else if (this->_events[i].data.fd == *(this->_securesockfd)) {
+                if (!this->acceptNewSecureConnection())
+                    return ;
             }
         }
     }

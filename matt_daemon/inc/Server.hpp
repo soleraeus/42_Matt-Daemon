@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:33:42 by bdetune           #+#    #+#             */
-/*   Updated: 2023/11/04 13:36:41 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 14:28:57 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,11 +78,16 @@ class Server
         std::string                         _password;
 
 		//Private member functions
-        bool    createStandardServer(void);
-        bool    createSecureServer(void);
-		bool	epoll_add(int fd, uint32_t events);
-		bool	epoll_del(int fd);
-		bool	epoll_mod(int fd, uint32_t events);
+        bool            createStandardServer(void);
+        bool            createSecureServer(void);
+        bool            initServer(void);
+        bool            acceptNewStandardConnection(void);
+        bool            acceptNewSecureConnection(void);
+        void            sendToClient(std::map<int, Client>::iterator& it, int index);
+        Client::Return  receiveFromClient(std::map<int, Client>::iterator& it, int index);
+		bool	        epoll_add(int fd, uint32_t events);
+		bool	        epoll_del(int fd);
+		bool	        epoll_mod(int fd, uint32_t events);
 };
 
 #endif

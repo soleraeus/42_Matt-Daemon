@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:59:28 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/31 22:14:54 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 14:37:28 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,20 +14,23 @@
 
 Tintin_reporter::Tintin_reporter(void) noexcept {}
 
-Tintin_reporter::Tintin_reporter(std::string const & filepath): _filepath(filepath), _logfile(filepath, std::ios::out | std::ios::in | std::ios::app)
-{
+Tintin_reporter::Tintin_reporter(std::string const & filepath):
+        _filepath(filepath),
+        _logfile(filepath, std::ios::out | std::ios::in | std::ios::app) {
 	if (!this->_logfile.good())
 		throw std::invalid_argument("Could not open logfile");
 }
 
-Tintin_reporter::Tintin_reporter(std::string&& filepath): _filepath(filepath), _logfile(std::move(filepath), std::ios::out | std::ios::in | std::ios::app)
-{
+Tintin_reporter::Tintin_reporter(std::string&& filepath):
+        _filepath(filepath),
+        _logfile(std::move(filepath), std::ios::out | std::ios::in | std::ios::app) {
 	if (!this->_logfile.good())
 		throw std::invalid_argument("Could not open logfile");
 }
 
-Tintin_reporter::Tintin_reporter(Tintin_reporter const & src): _filepath(src._filepath), _logfile(src._filepath, std::ios::out | std::ios::app)
-{
+Tintin_reporter::Tintin_reporter(Tintin_reporter const & src):
+        _filepath(src._filepath),
+        _logfile(src._filepath, std::ios::out | std::ios::app) {
 	if (!this->_logfile.is_open())
 	{
 		if (!this->_filepath.length())
@@ -42,8 +45,9 @@ Tintin_reporter::Tintin_reporter(Tintin_reporter const & src): _filepath(src._fi
 		throw std::invalid_argument("Logfile is an invalid state or could not be opened");
 }
 
-Tintin_reporter::Tintin_reporter(Tintin_reporter && src): _filepath(std::move(src._filepath)), _logfile(std::move(src._logfile))
-{
+Tintin_reporter::Tintin_reporter(Tintin_reporter && src):
+        _filepath(std::move(src._filepath)),
+        _logfile(std::move(src._logfile)) {
 	if (!this->_logfile.is_open())
 	{
 		if (!this->_filepath.length())
@@ -60,8 +64,7 @@ Tintin_reporter::Tintin_reporter(Tintin_reporter && src): _filepath(std::move(sr
 
 Tintin_reporter::~Tintin_reporter(void){}
 
-Tintin_reporter& Tintin_reporter::operator=(Tintin_reporter const & rhs)
-{
+Tintin_reporter& Tintin_reporter::operator=(Tintin_reporter const & rhs) {
 	if (this == &rhs)
 		return (*this);
 	if (this->_logfile.is_open())
@@ -76,8 +79,7 @@ Tintin_reporter& Tintin_reporter::operator=(Tintin_reporter const & rhs)
 	return (*this);
 }
 
-Tintin_reporter& Tintin_reporter::operator=(Tintin_reporter && rhs)
-{
+Tintin_reporter& Tintin_reporter::operator=(Tintin_reporter && rhs) {
 	if (this == &rhs)
 		return (*this);
 	if (this->_logfile.is_open())
@@ -100,17 +102,15 @@ Tintin_reporter& Tintin_reporter::operator=(Tintin_reporter && rhs)
 }
 
 
-Tintin_reporter::Return	Tintin_reporter::client_log(std::string && str)
-{
-	return (this->log("User input: " + str, Tintin_reporter::Loglevel::LOG));
-}
-Tintin_reporter::Return	Tintin_reporter::client_log(std::string const & str)
-{
+Tintin_reporter::Return	Tintin_reporter::client_log(std::string && str) {
 	return (this->log("User input: " + str, Tintin_reporter::Loglevel::LOG));
 }
 
-Tintin_reporter::Return	Tintin_reporter::log(std::string && str, Tintin_reporter::Loglevel level)
-{
+Tintin_reporter::Return	Tintin_reporter::client_log(std::string const & str) {
+	return (this->log("User input: " + str, Tintin_reporter::Loglevel::LOG));
+}
+
+Tintin_reporter::Return	Tintin_reporter::log(std::string && str, Tintin_reporter::Loglevel level) {
 	std::string	log;
 
 	if (!this->_logfile.is_open())
@@ -140,8 +140,7 @@ Tintin_reporter::Return	Tintin_reporter::log(std::string && str, Tintin_reporter
 	return Tintin_reporter::Return::OK ;
 }
 
-Tintin_reporter::Return	Tintin_reporter::log(std::string const & str, Tintin_reporter::Loglevel level)
-{
+Tintin_reporter::Return	Tintin_reporter::log(std::string const & str, Tintin_reporter::Loglevel level) {
 	std::string	log;
 
 	if (!this->_logfile.is_open())
@@ -171,8 +170,7 @@ Tintin_reporter::Return	Tintin_reporter::log(std::string const & str, Tintin_rep
 	return Tintin_reporter::Return::OK ;
 }
 
-std::string	Tintin_reporter::get_time(void) const
-{
+std::string	Tintin_reporter::get_time(void) const {
 	time_t curr_time;
 	tm * curr_tm;
 	char buf[50];
