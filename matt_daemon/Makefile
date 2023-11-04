@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/09/27 17:55:22 by tnaton            #+#    #+#              #
-#    Updated: 2023/11/03 13:07:16 by tnaton           ###   ########.fr        #
+#    Updated: 2023/11/04 16:32:56 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -15,9 +15,6 @@
 vpath %.hpp inc
 
 NAME = ../Matt_daemon
-
-INTERFACE = 0.0.0.0
-PORT = 8080
 
 OBJDIR := obj
 
@@ -81,21 +78,6 @@ $(OPENSSL):
 
 .PHONY: all
 all : $(NAME)
-
-.PHONY: docker
-docker:
-	docker build -t matt_daemon .
-	docker run -p ${INTERFACE}:${PORT}:4242 -d --name matt_daemon matt_daemon:latest
-
-.PHONY: clean-docker
-clean-docker:
-	docker stop matt_daemon || true
-	docker rm matt_daemon || true
-	docker rmi matt_daemon:latest || true
-
-
-.PHONY: re-docker
-re-docker: clean-docker docker
 
 .PHONY: clean
 clean:

@@ -6,7 +6,7 @@
 #    By: tnaton <marvin@42.fr>                      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/09/27 17:55:22 by tnaton            #+#    #+#              #
-#    Updated: 2023/10/31 20:44:55 by bdetune          ###   ########.fr        #
+#    Updated: 2023/11/04 16:35:30 by bdetune          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,7 +14,7 @@
 
 vpath %.hpp inc
 
-NAME = Ben_AFK_cli
+NAME = ../Ben_AFK_cli
 
 OBJDIR := obj
 

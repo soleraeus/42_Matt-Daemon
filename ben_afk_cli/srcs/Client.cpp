@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/11/04 16:11:09 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 16:34:40 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -351,6 +351,7 @@ bool    Client::secureReceive(bool& pending, bool& authenticated, bool& logs) {
             if (_secure && !authenticated) {
                 if (this->_inbuf == "AUTH OK\n") {
                     authenticated = true;
+                    std::cout << "Use command 'log?' to display the latest logs" << std::endl;
                 }
                 else if (this->_inbuf == "AUTH KO\n") {
                     std::cerr << "Authentication failed" << std::endl;
