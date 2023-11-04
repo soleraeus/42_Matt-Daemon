@@ -277,15 +277,26 @@ std::tuple<bool, bool, int> daemonize(std::shared_ptr<Tintin_reporter>& reporter
             log(reporter, "Could not enter deamon mode.", Tintin_reporter::Loglevel::ERROR);
             if (write(fds[1], "ERROR: Could not change working directory to /var/log/matt_daemon", strlen("ERROR: Could not change working directory to /var/log/matt_daemon"))) {}
             close(fds[1]);
+            close(0);
+            close(1);
+            close(2);
             return std::tuple<bool, bool, int>(true, true, 1); 
         }
 
-        std::string info = "INFO: started. PID: ";
+        std::string info = "started. PID: ";
         info += std::to_string(pid);
         info += ".";
+        if (!log(reporter, info.c_str(), Tintin_reporter::Loglevel::INFO)) {
+             if (write(fds[1], "ERROR: Could not log start to logfile", strlen("ERROR: Could not log start to logfile"))) {}
+            close(fds[1]);
+            close(0);
+            close(1);
+            close(2);
+            return std::tuple<bool, bool, int>(true, true, 1); 
+       }
+        info = "INFO: " + info;
         if (write(fds[1], info.data(), info.size())) {}
         close(fds[1]);
-        log(reporter, info.c_str(), Tintin_reporter::Loglevel::INFO);
         return std::tuple<bool, bool, int>(false, false, 0); 
     }
 }
