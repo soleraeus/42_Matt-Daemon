@@ -8,7 +8,7 @@ openssl.commands = test -d ../libs/openssl-3.0.11 || (cd ../libs; tar -xvf opens
 QMAKE_EXTRA_TARGETS += openssl
 PRE_TARGETDEPS += ../libs/openssl-3.0.11/libcrypto.a
 TEMPLATE = app
-TARGET = Ben_AFK
+TARGET = ../Ben_AFK
 INCLUDEPATH += .
 LIBS += ../libs/openssl-3.0.11/libcrypto.a
 

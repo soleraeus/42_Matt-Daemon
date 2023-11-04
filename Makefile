@@ -14,19 +14,19 @@
 all:
 	$(MAKE) -C matt_daemon
 	$(MAKE) -C ben_afk_cli
-	cd Ben_AFK; qmake; make
+	cd ben_afk; qmake; make
 
 .PHONY: clean
 clean:
 	$(MAKE) clean -C matt_daemon
 	$(MAKE) clean -C ben_afk_cli
-	$(MAKE) clean -C Ben_AFK
+	$(MAKE) clean -C ben_afk
 
 .PHONY: fclean
 fclean:
 	$(MAKE) fclean -C matt_daemon
 	$(MAKE) fclean -C ben_afk_cli
-	$(MAKE) distclean -C Ben_AFK
+	$(MAKE) distclean -C ben_afk
 
 .PHONY: re
 re: fclean all
