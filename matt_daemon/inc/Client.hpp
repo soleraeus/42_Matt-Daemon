@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:17:35 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/31 23:15:11 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 11:01:09 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,6 +97,8 @@ class Client
         bool							encrypt(std::shared_ptr<Tintin_reporter>& reporter);
         Client::Return					authenticate(std::shared_ptr<Tintin_reporter>& reporter);
         void							addHeader(void);
+        void                            trim(std::string& msg);
+        bool                            isValidUTF8(std::string& msg);
 };
 
 #endif

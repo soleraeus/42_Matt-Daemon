@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/31 23:25:46 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 11:52:49 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -204,6 +204,70 @@ Client::Return  Client::getPacketSize(void)
     return Client::Return::OK;
 }
 
+void    Client::trim(std::string& msg) {
+    if (msg.size() == 0)
+        return ;
+    msg.erase(0, msg.find_first_not_of("\t\n\r\v\f "));
+    if (msg.size() == 0)
+        return ;
+    std::string::size_type pos = msg.find_last_not_of("\t\n\r\v\f ");
+    if (pos == msg.size() - 1)
+        return ;
+    msg.erase(pos + 1);
+}
+
+bool    Client::isValidUTF8(std::string& msg) {
+    int             nb_char;
+    unsigned char   current;
+    unsigned int    val;
+
+    for (std::string::size_type index = 0; index < msg.size(); ++index) {
+        current = static_cast<unsigned char>(msg[index]);
+
+        //Get number of bytes in current UTF8 character
+        if ((current & 0x80) == 0) {
+            nb_char = 1;
+            val = current;
+        }
+        else if ((current & 0xE0) == 0xC0) {
+            nb_char = 2;
+            val = current & ~0xE0;
+        }
+        else if ((current & 0xF0) == 0xE0) {
+            nb_char = 3;
+            val = current & ~0xF0;
+        }
+        else if ((current & 0xF8) == 0xF0) {
+            nb_char = 4;
+            val = current & ~0xF8;
+        }
+        else
+            return false ;
+
+        if ((index + nb_char) > msg.size())
+            return false ;
+
+        //Retrieve full value of the code point
+        for (int i = 1; i < nb_char; ++i) {
+            ++index;
+            current = static_cast<unsigned char>(msg[index]);
+            if ((current & 0xC0) != 0x80)
+                return false ;
+            val = (val << 6) | (current & ~0xC0);
+        }
+
+        if (((val < ' ' && val != '\t') || val == 0x7F)                 //Disallow ascii non printable except tabs
+            || val > 0x10FFFF                                           //Last valid UTF8 point
+            || (val >= 0xD800 && val <= 0xDFFF)                         //Do not allow surrogates
+            || (val <= 0x7F && nb_char != 1)                            //Next 4 lines are testing for overlong
+            || (val >= 0x80 && val <= 0x7FF && nb_char != 2)
+            || (val >= 0x800 && val <= 0xFFFF && nb_char != 3)
+            || (val >= 0x10000 && val <= 0x10FFFF && nb_char != 4))
+            return false ;
+    }
+    return true ;
+}
+
 Client::Return  Client::flush(std::shared_ptr<Tintin_reporter>& reporter)
 {
     std::string             sub;
@@ -234,6 +298,13 @@ Client::Return  Client::flush(std::shared_ptr<Tintin_reporter>& reporter)
             this->addHeader();
             return Client::Return::SEND;
         }
+        this->trim(sub);
+        if (sub.size() == 0) {
+            this->_buffer.erase(0, pos + 1);
+            continue ;
+        }
+        if (!this->isValidUTF8(sub))
+            return Client::Return::KICK;
         if (reporter->client_log(sub) != Tintin_reporter::Return::OK)
             return Client::Return::QUIT;
         this->_buffer.erase(0, pos + 1);
