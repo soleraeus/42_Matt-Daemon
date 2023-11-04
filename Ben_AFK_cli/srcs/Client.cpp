@@ -6,74 +6,68 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/10/31 21:43:31 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 15:31:50 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
 #include "Client.hpp"
 
-Client::Client(const char* ip, bool secure): _secure(secure), _handshake(false), _sockfd(0), _RSA_key(nullptr), _mem(nullptr), _pubkey(nullptr), _pubkey_len(0), _epollfd(0), _ctx(nullptr), _cipher(nullptr) {
-    if (secure) {
-        _RSA_key = EVP_RSA_gen(4096);
-        if (!_RSA_key) {
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not generate RSA key for handshake");
-        }
+static const std::function<void(EVP_PKEY*)> freeEVPPKey = [](EVP_PKEY* ptr) -> void {if (ptr != nullptr){EVP_PKEY_free(ptr);}};
+
+static const std::function<void(BIO*)> freeBIO = [](BIO* ptr) -> void {if (ptr != nullptr){BIO_free(ptr);}};
+
+static const std::function<void(EVP_CIPHER*)> freeEVPCipher = [](EVP_CIPHER* ptr) -> void {if (ptr != nullptr){EVP_CIPHER_free(ptr);}};
+
+static const std::function<void(EVP_CIPHER_CTX*)> freeEVPCipherCtx = [](EVP_CIPHER_CTX* ptr) -> void {if (ptr != nullptr){EVP_CIPHER_CTX_free(ptr);}};
+
+Client::Client(const char* ip, bool secure):
+        _secure(secure),
+        _handshake(false),
+        _sockfd(0),
+        _RSA_key(nullptr, freeEVPPKey),
+        _mem(nullptr, freeBIO),
+        _pubkey(nullptr),
+        _pubkey_len(0),
+        _epollfd(0),
+        _ctx(nullptr, freeEVPCipherCtx),
+        _cipher(nullptr, freeEVPCipher) {
+    if (secure)
         this->initRSA();
-    }
     bzero(&_sockaddr, sizeof(_sockaddr));
-    if ((_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0)) <= 0) {
-        if (_RSA_key) {
-            EVP_CIPHER_CTX_free(_ctx);
-            EVP_CIPHER_free(_cipher);
-            BIO_free(_mem);
-            EVP_PKEY_free(_RSA_key);
-        }
+    if ((_sockfd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0)) <= 0)
         throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create socket");
-    }
     _sockaddr.sin_family = AF_INET;
-        _sockaddr.sin_port = secure ? htons(4343) : htons(4242);
+    _sockaddr.sin_port = secure ? htons(4343) : htons(4242);
     if (inet_pton(AF_INET, ip ? ip : "127.0.0.1", &_sockaddr.sin_addr) <= 0) {
-        if (_RSA_key) {
-            EVP_CIPHER_CTX_free(_ctx);
-            EVP_CIPHER_free(_cipher);
-            BIO_free(_mem);
-            EVP_PKEY_free(_RSA_key);
-        }
         close(_sockfd);
         throw std::system_error(std::make_error_code(std::errc::bad_address), "Bad ip address provided");
     }
 }
 
-Client::Client(const Client& src): _secure(src._secure), _handshake(src._handshake), _sockfd(0), _RSA_key(nullptr), _mem(nullptr), _pubkey(nullptr), _pubkey_len(0), _epollfd(0), _ctx(nullptr), _cipher(nullptr) {
-    if (src._RSA_key) {
-        _RSA_key = EVP_PKEY_dup(src._RSA_key);
-        if (!_RSA_key) {
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicate key");
-        }
-        this->initRSA();
-    }
+Client::Client(const Client& src):
+        _secure(src._secure),
+        _handshake(src._handshake),
+        _sockfd(0),
+        _RSA_key(src._RSA_key),
+        _mem(src._mem),
+        _pubkey(src._pubkey),
+        _pubkey_len(src._pubkey_len),
+        _epollfd(0),
+        _buf(src._buf),
+        _inbuf(src._inbuf),
+        _ctx(src._ctx),
+        _cipher(src._cipher) {
     memcpy((void *)&_sockaddr, (void *)&src._sockaddr, sizeof(_sockaddr));
+    memcpy((void *)_key, (void *)src._key, 32);
+    memcpy((void *)_iv, (void *)src._iv, 16);
     if (src._sockfd > 0) {
         _sockfd = dup(src._sockfd);
-        if (_sockfd <= 0) {
-            if (_RSA_key) {
-                EVP_CIPHER_CTX_free(_ctx);
-                EVP_CIPHER_free(_cipher);
-                BIO_free(_mem);
-                EVP_PKEY_free(_RSA_key);
-             }
+        if (_sockfd <= 0)
              throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicate socket");
-        }
     }
     if (src._epollfd > 0) {
         _epollfd = dup(src._epollfd);
         if (_epollfd <= 0) {
-            if (_RSA_key) {
-                EVP_CIPHER_CTX_free(_ctx);
-                EVP_CIPHER_free(_cipher);
-                BIO_free(_mem);
-                EVP_PKEY_free(_RSA_key);
-            }
             if (_sockfd > 0)
                 close(_sockfd);
             throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicate epoll fd");
@@ -81,86 +75,66 @@ Client::Client(const Client& src): _secure(src._secure), _handshake(src._handsha
     }
 }
 
-Client::Client(Client&& src): _secure(src._secure), _handshake(src._handshake), _sockfd(src._sockfd), _RSA_key(src._RSA_key), _mem(src._mem), _pubkey(src._pubkey), _pubkey_len(src._pubkey_len), _epollfd(src._epollfd), _ctx(src._ctx), _cipher(src._cipher) {
+Client::Client(Client&& src):
+        _secure(src._secure),
+        _handshake(src._handshake),
+        _sockfd(src._sockfd),
+        _RSA_key(std::move(src._RSA_key)),
+        _mem(std::move(src._mem)),
+        _pubkey(src._pubkey),
+        _pubkey_len(src._pubkey_len),
+        _epollfd(src._epollfd),
+        _buf(src._buf),
+        _inbuf(src._inbuf),
+        _ctx(std::move(src._ctx)),
+        _cipher(std::move(src._cipher)) {
     memcpy((void *)&_sockaddr, (void *)&src._sockaddr, sizeof(_sockaddr));
+    memcpy((void *)_key, (void *)src._key, 32);
+    memcpy((void *)_iv, (void *)src._iv, 16);
     src._sockfd = 0;
-    src._RSA_key = nullptr;
-    src._mem = nullptr;
     src._pubkey = nullptr;
     src._epollfd = 0;
-    src._ctx = nullptr;
-    src._cipher = nullptr;
 }
 
 Client::~Client(void) {
     if (_sockfd > 0)
         close(_sockfd);
-    if (_RSA_key)
-        EVP_PKEY_free(_RSA_key);
-    if (_mem)
-        BIO_free(_mem);
     if (_epollfd > 0)
         close(_epollfd);
-    if (_ctx)
-        EVP_CIPHER_CTX_free(_ctx);
-    if (_cipher)
-        EVP_CIPHER_free(_cipher);
 }
 
 Client& Client::operator=(const Client& rhs) {
-    if (this == &rhs)
-        return (*this);
-    _secure = rhs._secure;
-    _handshake = rhs._handshake;
     if (_sockfd > 0) {
         close(_sockfd);
         _sockfd = 0;
     }
-    if (_RSA_key) {
-        EVP_PKEY_free(_RSA_key);
-        _RSA_key = nullptr;
+    if (_epollfd > 0) {
+        close(_epollfd);
+        _epollfd = 0;
     }
-    if (_mem) {
-        BIO_free(_mem);
-        _mem = nullptr;
-    }
-    if (_ctx) {
-        EVP_CIPHER_CTX_free(_ctx);
-        _ctx = nullptr;
-    }
-    if (_cipher) {
-        EVP_CIPHER_free(_cipher);
-        _cipher = nullptr;
-    }
-    if (rhs._RSA_key) {
-        _RSA_key = EVP_PKEY_dup(rhs._RSA_key);
-        if (!_RSA_key) {
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicate key");
-        }
-        this->initRSA();
-    }
+    if (this == &rhs)
+        return (*this);
+    _secure = rhs._secure;
+    _handshake = rhs._handshake;
+    _RSA_key = rhs._RSA_key;
+    _mem = rhs._mem;
+    _pubkey = rhs._pubkey;
+    _pubkey_len = rhs._pubkey_len;
+    _buf = rhs._buf;
+    _inbuf = rhs._inbuf;
+    _ctx = rhs._ctx;
+    _cipher = rhs._cipher;
     memcpy((void *)&_sockaddr, (void *)&rhs._sockaddr, sizeof(_sockaddr));
+    memcpy((void *)_key, (void *)rhs._key, 32);
+    memcpy((void *)_iv, (void *)rhs._iv, 16);
     if (rhs._sockfd >= 0) {
         _sockfd = dup(rhs._sockfd);
-        if (_sockfd <= 0) {
-            if (_RSA_key) {
-                EVP_CIPHER_CTX_free(_ctx);
-                EVP_CIPHER_free(_cipher);
-                BIO_free(_mem);
-                EVP_PKEY_free(_RSA_key);
-            }
+        if (_sockfd <= 0)
             throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicate socket");
-        }
     }
     if (rhs._epollfd > 0) {
         _epollfd = dup(rhs._epollfd);
         if (_epollfd <= 0) {
-            if (_RSA_key) {
-                EVP_CIPHER_CTX_free(_ctx);
-                EVP_CIPHER_free(_cipher);
-                BIO_free(_mem);
-                EVP_PKEY_free(_RSA_key);
-            }
             if (_sockfd > 0)
                 close(_sockfd);
             throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not duplicate epoll fd");
@@ -176,40 +150,26 @@ Client& Client::operator=(Client&& rhs) {
         close(_sockfd);
         _sockfd = 0;
     }
-    if (_RSA_key) {
-        EVP_PKEY_free(_RSA_key);
-        _RSA_key = nullptr;
-    }
-    if (_mem) {
-        BIO_free(_mem);
-        _mem = nullptr;
-    }
-    if (_ctx) {
-        EVP_CIPHER_CTX_free(_ctx);
-        _ctx = nullptr;
-    }
-    if (_cipher) {
-        EVP_CIPHER_free(_cipher);
-        _cipher = nullptr;
+    if (_epollfd > 0) {
+        close(_epollfd);
+        _epollfd = 0;
     }
     _secure = rhs._secure;
     _handshake = rhs._handshake;
     _sockfd = rhs._sockfd;
     rhs._sockfd = 0;
-    _RSA_key = rhs._RSA_key;
-    rhs._RSA_key = nullptr;
-    _mem = rhs._mem;
-    rhs._mem = nullptr;
+    _RSA_key = std::move(rhs._RSA_key);
+    _mem = std::move(rhs._mem);
     _pubkey = rhs._pubkey;
     rhs._pubkey = nullptr;
     _pubkey_len = rhs._pubkey_len;
     memcpy((void *)&_sockaddr, (void *)&rhs._sockaddr, sizeof(_sockaddr));
+    memcpy((void *)_key, (void *)rhs._key, 32);
+    memcpy((void *)_iv, (void *)rhs._iv, 16);
     _epollfd = rhs._epollfd;
     rhs._epollfd = 0;
-    _ctx = rhs._ctx;
-    rhs._ctx = nullptr;
-    _cipher = rhs._cipher;
-    rhs._cipher = nullptr;
+    _ctx = std::move(rhs._ctx);
+    _cipher = std::move(rhs._cipher);
     return (*this);
 }
 
@@ -519,7 +479,7 @@ int Client::run(void) {
 bool    Client::decryptAESKey(void) {
         size_t    outlen;
 
-        EVP_PKEY_CTX*     ctx = EVP_PKEY_CTX_new(this->_RSA_key, nullptr);
+        EVP_PKEY_CTX*     ctx = EVP_PKEY_CTX_new(this->_RSA_key.get(), nullptr);
         if (!ctx) {
             std::cerr << "Could not create context" << std::endl;
             return false;
@@ -590,26 +550,26 @@ bool    Client::encrypt(void) {
     params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
 
     //Initialize context
-    if (!EVP_EncryptInit_ex2(_ctx, _cipher, _key, _iv, params)) {
+    if (!EVP_EncryptInit_ex2(_ctx.get(), _cipher.get(), _key, _iv, params)) {
         std::cerr << "Could not initialize encryption" << std::endl;
         return false;
     }
 
     //Encrypt
-    if (!EVP_EncryptUpdate(_ctx, outbuf, &outlen, reinterpret_cast<unsigned char*>(_buf.data()), static_cast<int>(_buf.size()))) {
+    if (!EVP_EncryptUpdate(_ctx.get(), outbuf, &outlen, reinterpret_cast<unsigned char*>(_buf.data()), static_cast<int>(_buf.size()))) {
         std::cerr << "Could not encrypt buffer" << std::endl;
         return false;
     }
 
     //Finalize
-    if (!EVP_EncryptFinal_ex(_ctx, outbuf, &tmplen)) {
+    if (!EVP_EncryptFinal_ex(_ctx.get(), outbuf, &tmplen)) {
         std::cerr << "Could not finalize encryption" << std::endl;
         return false;
     }
 
     // Get tag
     params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, outtag, 16);
-    if (!EVP_CIPHER_CTX_get_params(_ctx, params)) {
+    if (!EVP_CIPHER_CTX_get_params(_ctx.get(), params)) {
         std::cerr << "Could not get tag" << std::endl;
         return false;
     }
@@ -642,20 +602,20 @@ bool    Client::decrypt(void) {
 
     //Initialize context
     params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
-    if (!EVP_DecryptInit_ex2(_ctx, _cipher, _key, _iv, params)) {
+    if (!EVP_DecryptInit_ex2(_ctx.get(), _cipher.get(), _key, _iv, params)) {
         std::cerr << "Could not init decryption" << std::endl;
         return false;
     }
 
     //Decrypt plaintext
-    if (!EVP_DecryptUpdate(_ctx, outbuf, &outlen, reinterpret_cast<unsigned char*>(this->_buf.data()), static_cast<int>(this->_packetsize) - 16)) {
+    if (!EVP_DecryptUpdate(_ctx.get(), outbuf, &outlen, reinterpret_cast<unsigned char*>(this->_buf.data()), static_cast<int>(this->_packetsize) - 16)) {
         std::cerr << "Could not decrypt package" << std::endl;
         return false;
     }
 
     //Set expected tag
     params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, (void*)tag.data(), 16);
-    if (!EVP_CIPHER_CTX_set_params(_ctx, params)) {
+    if (!EVP_CIPHER_CTX_set_params(_ctx.get(), params)) {
         std::cerr << "Could not set expected tag" << std::endl;
         return false;
     }
@@ -672,7 +632,7 @@ bool    Client::decrypt(void) {
     this->_buf.erase(this->_buf.begin(), this->_buf.begin() + this->_packetsize);
 
     //Verify tag
-    rv = EVP_DecryptFinal_ex(_ctx, outbuf, &outlen);
+    rv = EVP_DecryptFinal_ex(_ctx.get(), outbuf, &outlen);
     if (rv <= 0) {
         std::cerr << "Tag authentication failed" << std::endl;
         return false;
@@ -682,31 +642,21 @@ bool    Client::decrypt(void) {
 }
 
 void    Client::initRSA(void) {
-    _mem = BIO_new(BIO_s_mem());
-    if (!_mem) {
-        EVP_PKEY_free(_RSA_key);
+    _RSA_key = std::shared_ptr<EVP_PKEY>(EVP_RSA_gen(4096), freeEVPPKey);
+    if (!_RSA_key)
+        throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not generate RSA key for handshake");
+    _mem = std::shared_ptr<BIO>(BIO_new(BIO_s_mem()), freeBIO);
+    if (!_mem)
         throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not initiate BIO");
-    }
-    if (!PEM_write_bio_PUBKEY(_mem, _RSA_key)) {
-        EVP_PKEY_free(_RSA_key);
-        BIO_free(_mem);
+    if (!PEM_write_bio_PUBKEY(_mem.get(), _RSA_key.get()))
         throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not put public key in BIO object");
-    }
-    _pubkey_len = BIO_get_mem_data(_mem, &_pubkey);
-    if (_pubkey_len <= 0) {
-        EVP_PKEY_free(_RSA_key);
-        BIO_free(_mem);
+    _pubkey_len = BIO_get_mem_data(_mem.get(), &_pubkey);
+    if (_pubkey_len <= 0)
         throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not read public key from BIO");
-    }
-    if ((_ctx = EVP_CIPHER_CTX_new()) == nullptr) {
-        EVP_PKEY_free(_RSA_key);
-        BIO_free(_mem);
+    _ctx = std::shared_ptr<EVP_CIPHER_CTX>(EVP_CIPHER_CTX_new(), freeEVPCipherCtx);
+   if (!_ctx)
         throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
-    }
-    if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
-        EVP_PKEY_free(_RSA_key);
-        BIO_free(_mem);
-        EVP_CIPHER_CTX_free(_ctx);
+   _cipher = std::shared_ptr<EVP_CIPHER>(EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr), freeEVPCipher);
+    if (!_cipher)
         throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
-    }
 }

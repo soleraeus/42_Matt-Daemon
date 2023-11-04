@@ -1,5 +1,6 @@
 //std
 #include <cstdio>
+#include <exception>
 #include <iostream>
 
 //C
