@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:17:35 by bdetune           #+#    #+#             */
-/*   Updated: 2023/11/04 11:01:09 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 12:54:08 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -87,7 +87,7 @@ class Client
         std::string						_send_buffer;
         std::vector<char>				_encrypted_buffer;
         std::shared_ptr<EVP_CIPHER_CTX>	_ctx;
-        EVP_CIPHER*						_cipher;
+        std::shared_ptr<EVP_CIPHER>		_cipher;
 
         Client::Return					getPacketSize(void);
         Client::Return					flush(std::shared_ptr<Tintin_reporter>& reporter);

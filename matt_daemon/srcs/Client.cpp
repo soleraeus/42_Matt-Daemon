@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/11/04 11:52:49 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 13:04:50 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,8 @@ static const std::function<void(int*)>	closeOnDelete = [](int* ptr) -> void {
 
 static const std::function<void(EVP_CIPHER_CTX*)> freeEvpCipherCtx = [](EVP_CIPHER_CTX* ptr) -> void { if (ptr != nullptr) {EVP_CIPHER_CTX_free(ptr);} };
 
+static const std::function<void(EVP_CIPHER*)> freeEvpCipher = [](EVP_CIPHER* ptr) -> void { if (ptr != nullptr) {EVP_CIPHER_free(ptr);} };
+
 Client::Client(void):
         _fd(nullptr, closeOnDelete),
         _packetsize(0),
@@ -31,7 +33,7 @@ Client::Client(void):
         _auth_tries(0),
         _authenticated(false),
         _ctx(nullptr, freeEvpCipherCtx),
-        _cipher(nullptr) {}
+        _cipher(nullptr, freeEvpCipher) {}
 
 Client::Client(int fd):
         _fd(new int(fd), closeOnDelete),
@@ -42,7 +44,7 @@ Client::Client(int fd):
         _auth_tries(0),
         _authenticated(false),
         _ctx(nullptr, freeEvpCipherCtx),
-        _cipher(nullptr) {}
+        _cipher(nullptr, freeEvpCipher) {}
 
 Client::Client(int fd, unsigned char* key, const std::string& username, const std::string& password):
         _fd(new int(fd), closeOnDelete),
@@ -55,14 +57,13 @@ Client::Client(int fd, unsigned char* key, const std::string& username, const st
         _auth_tries(0),
         _authenticated(false),
         _ctx(EVP_CIPHER_CTX_new(), freeEvpCipherCtx), 
-        _cipher(nullptr) {
+        _cipher(EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr), freeEvpCipher) {
     if (!RAND_bytes(this->_iv, 16))
         throw std::system_error(std::error_code(), "Could not generate iv");
     if (!_ctx)
         throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
-    if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
+    if (!_cipher)
         throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
-    }
 }
 
 Client::Client(const Client & src):
@@ -78,14 +79,10 @@ Client::Client(const Client & src):
         _buffer(src._buffer),
         _send_buffer(src._send_buffer),
         _encrypted_buffer(src._encrypted_buffer),
-		_ctx(src._ctx) {
+		_ctx(src._ctx),
+        _cipher(src._cipher) {
     memcpy(this->_RSA_buf, src._RSA_buf, 1024);
     memcpy(this->_iv, src._iv, 16);
-    if (src._secure) {
-        if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
-        }
-    }
 }
 Client::Client(Client && src):
         _fd(std::move(src._fd)),
@@ -101,18 +98,14 @@ Client::Client(Client && src):
         _send_buffer(std::move(src._send_buffer)),
         _encrypted_buffer(std::move(src._encrypted_buffer)),
         _ctx(std::move(src._ctx)),
-        _cipher(src._cipher) {
+        _cipher(std::move(src._cipher)) {
     memcpy(this->_RSA_buf, src._RSA_buf, 1024);
     memcpy(this->_iv, src._iv, 16);
     src._key = nullptr;
     src._authenticated = false;
-    src._cipher = nullptr;
 }
 
-Client::~Client(void) {
-    if (this->_cipher)
-        EVP_CIPHER_free(_cipher);
-}
+Client::~Client(void) {}
 
 Client & Client::operator=(const Client & rhs)
 {
@@ -133,11 +126,7 @@ Client & Client::operator=(const Client & rhs)
     this->_send_buffer = rhs._send_buffer;
     this->_encrypted_buffer = rhs._encrypted_buffer;
 	this->_ctx = rhs._ctx;
-    if (rhs._secure) {
-        if ((_cipher = EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr)) == nullptr) {
-            throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
-        }
-    }
+    this->_cipher = rhs._cipher;
     return (*this);
 }
 
@@ -161,8 +150,7 @@ Client & Client::operator=(Client && rhs)
     this->_send_buffer = std::move(rhs._send_buffer);
     this->_encrypted_buffer = std::move(rhs._encrypted_buffer);
     this->_ctx = std::move(rhs._ctx);
-    this->_cipher = rhs._cipher;
-    rhs._cipher = nullptr;
+    this->_cipher = std::move(rhs._cipher);
     return (*this);
 }
 
@@ -471,43 +459,33 @@ bool    Client::decrypt(void) {
     }
     tag.assign(this->_encrypted_buffer.begin() + this->_packetsize - 16, this->_encrypted_buffer.begin() + this->_packetsize);
 
-    //Put data to decrypt in buffer
-
+    //Initialize decryption
     params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
-
-    /*
-     * Initialise an encrypt operation with the cipher/mode, key, IV and
-     * IV length parameter.
-     */
-    if (!EVP_DecryptInit_ex2(_ctx.get(), _cipher, _key, _iv, params)) {
+    if (!EVP_DecryptInit_ex2(_ctx.get(), _cipher.get(), _key, _iv, params)) {
         return false;
     }
 
-    /* Decrypt plaintext */
+    // Decrypt
     if (!EVP_DecryptUpdate(_ctx.get(), outbuf, &outlen, reinterpret_cast<unsigned char*>(this->_encrypted_buffer.data()), this->_packetsize - 16)) {
         return false;
     }
 
-    /* Set expected tag value. */
+    //Set expected tag
     params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, (void*)tag.data(), 16);
-
     if (!EVP_CIPHER_CTX_set_params(_ctx.get(), params)) {
         return false;
     }
 
+    //Save new IV and add decrypted packet to buffer for logging
     if (outlen < 16) {
         return false;
     }
     memcpy(this->_iv, outbuf + outlen - 16, 16);
     this->_buffer.insert(this->_buffer.end(), outbuf, outbuf + outlen - 16);
     this->_encrypted_buffer.erase(this->_encrypted_buffer.begin(), this->_encrypted_buffer.begin() + this->_packetsize);
-    /* Finalise: note get no output for GCM */
-    rv = EVP_DecryptFinal_ex(_ctx.get(), outbuf, &outlen);
 
-    /*
-     * Print out return value. If this is not successful authentication
-     * failed and plaintext is not trustworthy.
-     */
+    //Verify tag
+    rv = EVP_DecryptFinal_ex(_ctx.get(), outbuf, &outlen);
     if (rv <= 0) {
         return false;
     }
@@ -522,6 +500,7 @@ bool    Client::encrypt(std::shared_ptr<Tintin_reporter>& reporter) {
     unsigned char outtag[16];
     OSSL_PARAM params[2] = {OSSL_PARAM_END, OSSL_PARAM_END};
 
+    //Handle next iv
     if (!RAND_bytes(nextiv, 16)) {
         if (reporter->log("Could not generate next iv for client secure connection", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return false;
@@ -529,38 +508,36 @@ bool    Client::encrypt(std::shared_ptr<Tintin_reporter>& reporter) {
     this->_send_buffer.insert(this->_send_buffer.end(), nextiv, nextiv + 16);
     params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN, &gcm_ivlen);
 
-    /*
-     * Initialise an encrypt operation with the cipher/mode, key, IV and
-     * IV length parameter.
-     */
-    if (!EVP_EncryptInit_ex2(_ctx.get(), _cipher, _key, _iv, params)) {
+    //Initialize encryption
+    if (!EVP_EncryptInit_ex2(_ctx.get(), _cipher.get(), _key, _iv, params)) {
         if (reporter->log("Could not initialize encryption for client secure connection", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return false;
     }
 
-    /* Encrypt plaintext */
+    //Encrypt
     if (!EVP_EncryptUpdate(_ctx.get(), outbuf, &outlen, reinterpret_cast<unsigned char*>(_send_buffer.data()), static_cast<int>(_send_buffer.size()))) {
         if (reporter->log("Could not encrypt buffer for client secure connection", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return false;
     }
-
-    /* Finalise: note get no output for GCM */
     if (!EVP_EncryptFinal_ex(_ctx.get(), outbuf, &tmplen)) {
         if (reporter->log("Could not finalize encryption for client secure connection", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return false;
     }
 
-    /* Get tag */
+    //Get tag
     params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, outtag, 16);
     if (!EVP_CIPHER_CTX_get_params(_ctx.get(), params)) {
         if (reporter->log("Could not get tag", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return false;
     }
 
-    /* Output tag */
+    //Put encrypted string and tag in send buffer
     this->_send_buffer.assign(outbuf, outbuf + outlen);
     this->_send_buffer.insert(this->_send_buffer.end(), outtag, outtag + 16);
+
+    //Save new iv
     memcpy(this->_iv, nextiv, 16);
+
     return true;
 }
 
