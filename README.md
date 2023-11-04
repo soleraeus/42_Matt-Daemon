@@ -1,5 +1,5 @@
 # Matt_daemon
-Matt_daemon is a daemon logging server that allows clients to connect and send messages which will be logged in `/var/log/matt_daemon/matt_daemon.log`. It needs to be run as root.
+Matt_daemon is a daemon logging server that allows clients to connect and send messages which will be logged in `/var/log/matt_daemon/matt_daemon.log`. The daemon only accepts valid UTF8 strings and it will not log empty strings nor strings containing only withespaces. It needs to be run as root.
 
 ### Installing
 
@@ -10,7 +10,7 @@ You will also need [gcc >= 10](https://gcc.gnu.org), perl-devel (for openssl) an
 
 ### Matt_daemon execution
 
-It starts a daemon listening on port 4242 which logs every strings sent to it. Options allow you to start a more secure server on port 4343 using a hybrid encryption system: RSA for key exchange and AES256GCM for encrypted communication thereafter. This secure port enforces authentication and requires you to set a username and password.
+It starts a daemon listening on port 4242 which logs every strings sent to it. Options allow you to start a more secure server on port 4343 using a hybrid encryption scheme: RSA for key exchange and AES256GCM for encrypted communication thereafter. This secure port enforces authentication and requires you to set a username and password.
 
 The valid options are :<br>
  `-h` : Displace the help page<br>
@@ -31,7 +31,7 @@ To run it, you just need to execute it after compilation. The rest is self-expla
 
 `Ben_AFK_cli` is a command line interface program that allows you to send messages through the terminal. 
 You can request the logfile by sending `log?` if you are in secure mode.
-To run it, you need to give him the IP of the target. You can also give the option `-s` to connect in secure mode.
+To run it, you need to give it the IP of the target. You can also give the option `-s` to connect in secure mode.
 
 Usage: <br>
 `./Ben_AFK_cli [OPTION] IP`<br>
