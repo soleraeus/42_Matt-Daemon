@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/26 19:29:26 by bdetune           #+#    #+#             */
-/*   Updated: 2023/11/03 19:29:26 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 12:35:47 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -272,6 +272,13 @@ std::tuple<bool, bool, int> daemonize(std::shared_ptr<Tintin_reporter>& reporter
         dup2(devNull, 2);
         close(devNull);
         pid = getpid();
+
+        if (chdir("/var/log/matt_daemon") == -1) {
+            log(reporter, "Could not enter deamon mode.", Tintin_reporter::Loglevel::ERROR);
+            if (write(fds[1], "ERROR: Could not change working directory to /var/log/matt_daemon", strlen("ERROR: Could not change working directory to /var/log/matt_daemon"))) {}
+            close(fds[1]);
+            return std::tuple<bool, bool, int>(true, true, 1); 
+        }
 
         std::string info = "INFO: started. PID: ";
         info += std::to_string(pid);
