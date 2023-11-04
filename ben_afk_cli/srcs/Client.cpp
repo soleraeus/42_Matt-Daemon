@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/11/04 16:34:40 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 16:55:28 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -677,9 +677,9 @@ void    Client::initRSA(void) {
     if (_pubkey_len <= 0)
         throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not read public key from BIO");
     _ctx = std::shared_ptr<EVP_CIPHER_CTX>(EVP_CIPHER_CTX_new(), freeEVPCipherCtx);
-   if (!_ctx)
+    if (!_ctx)
         throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not create new context");
-   _cipher = std::shared_ptr<EVP_CIPHER>(EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr), freeEVPCipher);
+    _cipher = std::shared_ptr<EVP_CIPHER>(EVP_CIPHER_fetch(nullptr, "AES-256-GCM", nullptr), freeEVPCipher);
     if (!_cipher)
         throw std::system_error(std::make_error_code(std::errc::operation_canceled), "Could not fetch cipher");
 }
