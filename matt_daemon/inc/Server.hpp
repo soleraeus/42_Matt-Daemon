@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:33:42 by bdetune           #+#    #+#             */
-/*   Updated: 2023/10/31 22:21:13 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 13:36:41 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,9 +66,9 @@ class Server
 		void	serve(void);
 	
 	private:
-		int									_sockfd;
-		int									_securesockfd;
-		int									_epollfd;
+        std::shared_ptr<int>				_sockfd;
+        std::shared_ptr<int>    			_securesockfd;
+        std::shared_ptr<int>				_epollfd;
 		unsigned char						_key[32];
 		std::shared_ptr<Tintin_reporter>	_reporter;
 		struct epoll_event					_events[5];
@@ -78,6 +78,8 @@ class Server
         std::string                         _password;
 
 		//Private member functions
+        bool    createStandardServer(void);
+        bool    createSecureServer(void);
 		bool	epoll_add(int fd, uint32_t events);
 		bool	epoll_del(int fd);
 		bool	epoll_mod(int fd, uint32_t events);

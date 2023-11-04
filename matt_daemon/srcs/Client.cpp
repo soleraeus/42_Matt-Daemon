@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/28 20:21:03 by bdetune           #+#    #+#             */
-/*   Updated: 2023/11/04 13:04:50 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 13:14:31 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,8 +14,9 @@
 
 static const std::function<void(int*)>	closeOnDelete = [](int* ptr) -> void {
 																				if (ptr != nullptr) {
-																					if (*ptr > 0)
+																					if (*ptr > 0) {
 																						close(*ptr);
+                                                                                    }
 																					delete ptr;
 																				}
 																			};
