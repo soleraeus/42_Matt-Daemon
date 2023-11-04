@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/09/27 20:42:18 by bdetune           #+#    #+#             */
-/*   Updated: 2023/11/04 14:34:31 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 16:21:27 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -218,15 +218,17 @@ bool    Server::epoll_mod(int fd, uint32_t events) {
 bool    Server::initServer(void) {
     if (!this->_reporter)
         throw std::logic_error("No reporter associated with server");
-    if (*(this->_epollfd) <= 0 || (*(this->_sockfd) <= 0 && *(this->_securesockfd) <= 0))
+    if (!this->_epollfd || *(this->_epollfd) <= 0
+        || ((!this->_sockfd || *(this->_sockfd) <= 0)
+            && (!this->_securesockfd || *(this->_securesockfd) <= 0)))
         throw std::logic_error("Member function create_server needs to be called before serving");
     memset(this->_events, 0, sizeof(struct epoll_event) * 5);
-    if (*(this->_sockfd) > 0 && !this->epoll_add(*(this->_sockfd), EPOLLIN))
+    if (this->_sockfd && *(this->_sockfd) > 0 && !this->epoll_add(*(this->_sockfd), EPOLLIN))
     {
         if (this->_reporter->log("Could not initialize epoll on socket", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return false;
     }
-    if (*(this->_securesockfd) > 0 && !this->epoll_add(*(this->_securesockfd), EPOLLIN))
+    if (this->_securesockfd && *(this->_securesockfd) > 0 && !this->epoll_add(*(this->_securesockfd), EPOLLIN))
     {
         if (this->_reporter->log("Could not initialize epoll on socket", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK) {}
         return false ;
@@ -348,11 +350,11 @@ void    Server::serve(void)
                     this->_clients.erase(it);
                 }
             }
-            else if (this->_events[i].data.fd == *(this->_sockfd)) {
+            else if (this->_sockfd && this->_events[i].data.fd == *(this->_sockfd)) {
                 if (!this->acceptNewStandardConnection())
                     return ;
             }
-            else if (this->_events[i].data.fd == *(this->_securesockfd)) {
+            else if (this->_securesockfd && this->_events[i].data.fd == *(this->_securesockfd)) {
                 if (!this->acceptNewSecureConnection())
                     return ;
             }
