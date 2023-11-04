@@ -23,7 +23,7 @@ There are two clients : `Ben_AFK` and `Ben_AFK_cli`
 
 #### Ben_AFK
 
-`Ben_AFK` is a Qt based graphical application, which allows you to connect to the remote server and send message in either mode.
+`Ben_AFK` is a Qt based graphical application, which allows you to connect to the remote server and send messages in either mode.
 It also allows you to check the logfile from the application if you are in secure mode.
 To run it, you just need to execute it after compilation. The rest is self-explanatory.
 
