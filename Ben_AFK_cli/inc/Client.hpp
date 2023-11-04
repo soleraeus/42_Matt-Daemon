@@ -6,7 +6,7 @@
 /*   By: bdetune <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/10/19 20:50:15 by bdetune           #+#    #+#             */
-/*   Updated: 2023/11/04 15:01:11 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/04 16:10:30 by bdetune          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -73,6 +73,7 @@ class Client {
         std::shared_ptr<EVP_CIPHER_CTX> _ctx;
         std::shared_ptr<EVP_CIPHER>     _cipher;
 
+        bool                handshake(void);
         bool                getCredentials(void);
         bool                getUserInput(void);
         bool                getPacketSize(void);
@@ -80,6 +81,8 @@ class Client {
         bool                encrypt(void);
         bool                decrypt(void);
         void                initRSA(void);
+        bool                secureReceive(bool& pending, bool& authenticated, bool& logs);
+        bool                secureSend(bool& logs, bool& quit, bool& pending, bool& authenticated);
 };
 
 #endif
