@@ -10,23 +10,11 @@
 #                                                                              #
 # **************************************************************************** #
 
-NAME = Matt_daemon
-
-BEN_AFK = Ben_AFK/Ben_AFK
-
-BEN_AFK_CLI = Ben_AFK_cli/Ben_AFK_cli
-
-$(NAME) : 
-	$(MAKE) -C matt_daemon
-
-$(BEN_AFK) :
-	cd Ben_AFK; qmake; make
-
-$(BEN_AFK_CLI):
-	$(MAKE) -C Ben_AFK_cli
-
 .PHONY: all
-all: $(NAME) $(BEN_AFK_CLI) $(BEN_AFK)
+all:
+	$(MAKE) -C matt_daemon
+	$(MAKE) -C Ben_AFK_cli
+	cd Ben_AFK; qmake; make
 
 .PHONY: clean
 clean:
