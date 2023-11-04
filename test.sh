@@ -23,7 +23,7 @@ check_ret
 (echo -e "tnaton\nlemotdepasse\n" | ./Matt_daemon -x && (echo -e "tnaton\nlemotdepasse\n"; echo "salut"; echo "quit") | ./Ben_AFK_cli -s 127.0.0.1 && cat /var/log/matt_daemon/matt_daemon.log | tail -5 | grep "salut") 1>/dev/null
 check_ret
 
-echo "Expect FAIL"
+echo -n "Expect FAIL : "
 
 (mkdir /var/lock/matt_daemon.lock && ./Matt_daemon) 2>/dev/null
 check_ret
@@ -40,8 +40,14 @@ EOF
 ); echo "quit") | ./Ben_AFK_cli 127.0.0.1) 1>/dev/null
 check_ret
 
-
-echo "Expect FAIL"
+echo -n "Expect FAIL : "
 
 (./Matt_daemon && ( echo -e "\x01" | ./Ben_AFK_cli 127.0.0.1); echo "quit" | ./Ben_AFK_cli 127.0.0.1; cat /var/log/matt_daemon/matt_daemon.log | tail -5 | grep 'LOG') 1>/dev/null
 check_ret
+
+echo -n "Expect FAIL : "
+
+(./Matt_daemon && ./Matt_daemon) 1>/dev/null 2>/dev/null
+check_ret
+
+echo "quit" | ./Ben_AFK_cli 127.0.0.1 1>/dev/null
