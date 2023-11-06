@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/11/06 19:26:24 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/06 19:35:04 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -469,7 +469,7 @@ int Client::run(void) {
         }
         hasevent = epoll_wait(_epollfd, &_event, 1, first ? 1000 : 1000*60*2);
         if (hasevent > 0) {
-            if (_event.events & EPOLLHUP) {
+            if (_event.events & EPOLLHUP || _event.events & EPOLLERR) {
                 std::cerr << "Server disconnected" << std::endl;
                 return 1;
             }
