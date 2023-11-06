@@ -48,6 +48,7 @@ void MainWindow::secured() {
     qDebug() << "Client choosed a secure connection";
     this->ui->stackedWidget->setCurrentIndex(PageIndex::Loading);
     this->isSecure = true;
+    ui->tabWidget->setTabVisible(1, true);
     createSocket();
 }
 
