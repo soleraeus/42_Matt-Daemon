@@ -252,7 +252,7 @@ bool    Client::getCredentials(void) {
     }
     std::cout << std::endl;
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    this->_buf = username + "\n" + password;
+    this->_buf = username + "\n" + password + "\n";
     return true;
 }
 
