@@ -285,6 +285,7 @@ bool    Server::acceptNewStandardConnection(void) {
             return false;
     }
     if (this->_clients.size() == 3) {
+        shutdown(new_connection, SHUT_RDWR);
         close(new_connection);
         if (this->_reporter->log("Connection attempt while maximum capacity of 3 connected clients has already been reached", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
             return false;
@@ -305,6 +306,7 @@ bool    Server::acceptNewSecureConnection(void) {
             return false;
     }
     if (this->_clients.size() == 3) {
+        shutdown(new_connection, SHUT_RDWR);
         close(new_connection);
         if (this->_reporter->log("Connection attempt while maximum capacity of 3 connected clients has already been reached", Tintin_reporter::Loglevel::ERROR) != Tintin_reporter::Return::OK)
             return false;

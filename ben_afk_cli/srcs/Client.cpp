@@ -451,7 +451,7 @@ int Client::run(void) {
     }
     memset(&_event, 0, sizeof(_event));
     _event.data.fd = _sockfd;
-    _event.events = EPOLLOUT | EPOLLIN;
+    _event.events = EPOLLIN;
     if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, _sockfd, &_event) == -1) {
         std::cerr << "Could not add socket to epoll" << std::endl;
         return 1;
@@ -474,7 +474,8 @@ int Client::run(void) {
                 return 1;
             }
             if (first) {
-                first = false;
+                std::cerr << "Server disconnected" << std::endl;
+                return 1;
             }
             else if (_secure && !_handshake) {
                 if (!this->handshake())
@@ -483,6 +484,10 @@ int Client::run(void) {
             else if (!_secure) {
                 if (this->_buf.size() > PIPE_BUF) {
                     std::cerr << "You cannot send more than " << PIPE_BUF << " bytes to Matt_daemon" << std::endl;
+                    return 1;
+                }
+                if (_event.events & EPOLLIN) {
+                    std::cerr << "Server disconnected" << std::endl;
                     return 1;
                 }
                 ssize_t ret = send(_sockfd, _buf.data(), _buf.size(), MSG_DONTWAIT);
@@ -497,6 +502,10 @@ int Client::run(void) {
                 _buf.erase(_buf.begin(), _buf.begin() + ret);
             }
             else if (_event.events & EPOLLOUT) {
+                if (_event.events & EPOLLIN) {
+                    std::cerr << "Server disconnected" << std::endl;
+                    return 1;
+                }
                 if (!this->secureSend(logs, quit, pending, authenticated)) {
                     if (quit)
                         return 0;
@@ -507,6 +516,16 @@ int Client::run(void) {
                 if (!this->secureReceive(pending, authenticated, logs))
                     return 1;
             }
+        }
+        else if (first) {
+            memset(&_event, 0, sizeof(_event));
+            _event.data.fd = _sockfd;
+            _event.events = EPOLLOUT | EPOLLIN;
+            if (epoll_ctl(_epollfd, EPOLL_CTL_MOD, _sockfd, &_event) == -1) {
+                std::cerr << "Could not add socket to epoll" << std::endl;
+                return 1;
+            }
+            first = false;
         }
     }
     return 0;
