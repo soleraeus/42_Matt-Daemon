@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/11/04 16:55:28 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/06 19:24:07 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -256,9 +256,12 @@ bool    Client::getCredentials(void) {
     return true;
 }
 
-bool    Client::getUserInput(void) {
+bool    Client::getUserInput(bool& quit, bool& logs) {
     std::cout << "Ben_AFK > ";
     std::getline(std::cin, _buf);
+    _buf += "\n";
+    quit = _buf == "quit\n";
+    logs = _secure && _buf == "log?\n";
     if (!std::cin.eof())
         return true;
     std::cout << "Goodbye" << std::endl;
@@ -317,7 +320,7 @@ bool    Client::handshake(void) {
             this->_buf.clear();
             memset(&_event, 0, sizeof(_event));
             _event.data.fd = _sockfd;
-            _event.events = EPOLLOUT;
+            _event.events = EPOLLOUT | EPOLLIN;
             if (epoll_ctl(_epollfd, EPOLL_CTL_MOD, _sockfd, &_event) == -1) {
                 std::cerr << "Could not modify socket event in epoll" << std::endl;
                 return false;
@@ -371,7 +374,7 @@ bool    Client::secureReceive(bool& pending, bool& authenticated, bool& logs) {
             pending = false;
             memset(&_event, 0, sizeof(_event));
             _event.data.fd = _sockfd;
-            _event.events = EPOLLOUT;
+            _event.events = EPOLLOUT | EPOLLIN;
             if (epoll_ctl(_epollfd, EPOLL_CTL_MOD, _sockfd, &_event) == -1) {
                 std::cerr << "Could not modify socket event in epoll" << std::endl;
                 return false;
@@ -381,21 +384,23 @@ bool    Client::secureReceive(bool& pending, bool& authenticated, bool& logs) {
     return true;
 }
 
-bool    Client::secureSend(bool& logs, bool& quit, bool& pending, bool& authenticated) {
-    logs = this->_buf == "log?";
-    quit = this->_buf == "quit";
-    if (!this->encrypt())
-        return false;
-    std::string header = "Length ";
-    header += std::to_string(this->_buf.size());
-    header += "\n";
-    this->_buf.insert(this->_buf.begin(), header.begin(), header.end());
+bool    Client::secureSend(bool logs, bool quit, bool& pending, bool& authenticated) {
+    if (!pending) {
+        if (!this->encrypt())
+            return false;
+        std::string header = "Length ";
+        header += std::to_string(this->_buf.size());
+        header += "\n";
+        this->_buf.insert(this->_buf.begin(), header.begin(), header.end());
+    }
     ssize_t ret = send(_sockfd, _buf.data(), _buf.size(), MSG_DONTWAIT);
     if (ret <= 0) {
         std::cerr << "Could not send packet to server, Matt_daemon is most probably disconnected" << std::endl;
         return false;
     }
     _buf.erase(_buf.begin(), _buf.begin() + ret);
+    if (_buf.empty())
+        pending = false;
     if (_buf.empty() && _secure && !authenticated) {
         memset(&_event, 0, sizeof(_event));
         _event.data.fd = _sockfd;
@@ -424,6 +429,7 @@ bool    Client::secureSend(bool& logs, bool& quit, bool& pending, bool& authenti
 }
 
 int Client::run(void) {
+    bool        first = true;
     bool        logs = false;
     bool        quit = false;
     bool        authenticated = false;
@@ -444,55 +450,61 @@ int Client::run(void) {
     }
     memset(&_event, 0, sizeof(_event));
     _event.data.fd = _sockfd;
-    _event.events = EPOLLOUT;
+    _event.events = EPOLLOUT | EPOLLIN;
     if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, _sockfd, &_event) == -1) {
         std::cerr << "Could not add socket to epoll" << std::endl;
         return 1;
     }
     while (true) {
-        if (!(_secure && !_handshake) && _buf.empty() && !pending) {
+        if (!(_secure && !_handshake) && _buf.empty() && !pending && !first) {
             if (_secure && !authenticated) {
                 if (!this->getCredentials())
                     return 1;
             }
             else {
-                if (!this->getUserInput())
+                if (!this->getUserInput(quit, logs))
                     return 0;
             }
         }
-        hasevent = epoll_wait(_epollfd, &_event, 1, 1000*60*2);
+        hasevent = epoll_wait(_epollfd, &_event, 1, first ? 1000 : 1000*60*2);
         if (hasevent > 0) {
             if (_event.events & EPOLLHUP) {
                 std::cerr << "Server disconnected" << std::endl;
                 return 1;
             }
-            if (_secure && !_handshake) {
+            if (first) {
+                first = false;
+            }
+            else if (_secure && !_handshake) {
                 if (!this->handshake())
                     return 1;
             }
             else if (!_secure) {
-                _buf += "\n";
+                if (this->_buf.size() > PIPE_BUF) {
+                    std::cerr << "You cannot send more than " << PIPE_BUF << " bytes to Matt_daemon" << std::endl;
+                    return 1;
+                }
                 ssize_t ret = send(_sockfd, _buf.data(), _buf.size(), MSG_DONTWAIT);
                 if (ret <= 0) {
                     std::cerr << "Could not send packet to server" << std::endl;
                     return 1;
                 }
-                if (this->_buf == "quit\n") {
+                if (quit) {
                     std::cout << "Goodbye" << std::endl;
                     return 0;
                 }
                 _buf.erase(_buf.begin(), _buf.begin() + ret);
             }
-            else if (_event.events & EPOLLIN) {
-                if (!this->secureReceive(pending, authenticated, logs))
-                    return 1;
-            }
-            else {
+            else if (_event.events & EPOLLOUT) {
                 if (!this->secureSend(logs, quit, pending, authenticated)) {
                     if (quit)
                         return 0;
                     return 1;
                 }
+            }
+            else {
+                if (!this->secureReceive(pending, authenticated, logs))
+                    return 1;
             }
         }
     }
@@ -558,7 +570,6 @@ bool    Client::encrypt(void) {
     unsigned char outtag[16];
     OSSL_PARAM params[2] = {OSSL_PARAM_END, OSSL_PARAM_END};
 
-    this->_buf += '\n';
     if (this->_buf.size() > PIPE_BUF) {
         std::cerr << "You cannot send more than " << PIPE_BUF << " bytes to Matt_daemon" << std::endl;
         return false;
