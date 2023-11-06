@@ -6,7 +6,7 @@
 /*     By: bdetune <marvin@42.fr>                                         +#+    +:+             +#+                */
 /*                                                                                                +#+#+#+#+#+     +#+                     */
 /*     Created: 2023/10/19 20:55:26 by bdetune                     #+#        #+#                         */
-/*   Updated: 2023/11/06 19:24:07 by bdetune          ###   ########.fr       */
+/*   Updated: 2023/11/06 19:26:24 by bdetune          ###   ########.fr       */
 /*                                                                                                                                                        */
 /* ************************************************************************** */
 
@@ -392,6 +392,7 @@ bool    Client::secureSend(bool logs, bool quit, bool& pending, bool& authentica
         header += std::to_string(this->_buf.size());
         header += "\n";
         this->_buf.insert(this->_buf.begin(), header.begin(), header.end());
+        pending = true;
     }
     ssize_t ret = send(_sockfd, _buf.data(), _buf.size(), MSG_DONTWAIT);
     if (ret <= 0) {
