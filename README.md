@@ -1,5 +1,5 @@
 # Matt_daemon
-Matt_daemon is a daemon logging server that allows clients to connect and send messages which will be logged in `/var/log/matt_daemon/matt_daemon.log`. The daemon only accepts valid UTF8 strings and it will not log empty strings nor strings containing only withespaces. It needs to be run as root.
+Matt_daemon is a daemon logging server that allows up to 3 simultaneous clients to connect and send messages which will be logged in `/var/log/matt_daemon/matt_daemon.log`. The daemon only accepts valid UTF8 strings and it will not log empty strings nor strings containing only whitespaces. The maximum accepted size for a single string is PIPE_BUF (which at the time of writing corresponds to a 4k memory page on Linux). The process needs to be run as root.
 
 ### Installing
 
@@ -39,3 +39,7 @@ Valid options:<br>
   `-h`: Display the help page<br>
   `-s`: Connect to the secure Matt_daemon service running at IP.<br>
 
+### Supported OS
+
+Currently Matt_daemon is only functional on Linux distributions.
+It has been fully tested on Ubuntu 22.04, Debian 12, Kali 2023.3, Parrot 5.3, Fedora 38. Other flavours should work although compatibility is not guaranteed (notably for older distributions as Matt_daemon relies on epoll which has been introduced in the kernel in version 2.5.44)
